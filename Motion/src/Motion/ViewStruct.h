@@ -24,26 +24,22 @@
 //
 ////////////////////////////////////////////////////////////
 
-#ifndef SFML_RENDERTEXTURESTRUCT_H
-#define SFML_RENDERTEXTURESTRUCT_H
+#ifndef SFML_VIEWSTRUCT_H
+#define SFML_VIEWSTRUCT_H
 
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Graphics/RenderTexture.hpp>
-#include <Motion/ViewStruct.h>
+#include <SFML/Graphics/View.hpp>
 
 
 ////////////////////////////////////////////////////////////
-// Internal structure of sfRenderTexture
+// Internal structure of sfMusic
 ////////////////////////////////////////////////////////////
-struct sfRenderTexture
+struct sfView
 {
-    sf::RenderTexture This;
-    const sfTexture*  Target;
-    sfView            DefaultView;
-    sfView            CurrentView;
+    sf::View This;
 };
 
 
-#endif // SFML_RENDERTEXTURESTRUCT_H
+#endif // SFML_VIEWSTRUCT_H

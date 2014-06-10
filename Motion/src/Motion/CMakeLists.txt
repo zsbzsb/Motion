@@ -34,6 +34,7 @@ set(SRC
     ${INCROOT}/Export.h
     ${SRCROOT}/RenderTextureStruct.h
     ${SRCROOT}/RenderWindowStruct.h
+    ${SRCROOT}/ViewStruct.h
     ${INCROOT}/Types.h
 )
 
