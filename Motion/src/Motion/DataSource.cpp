@@ -7,6 +7,7 @@
 #include <Motion/DataSourceStruct.h>
 
 #define MAX_AUDIO_SAMPLES 192000
+#define PACKET_QUEUE_AMOUNT 10
 
 namespace mt
 {
@@ -28,7 +29,14 @@ namespace mt
         m_videorgbabuffer(nullptr),
         m_audiopcmbuffer(nullptr),
         m_videoswcontext(nullptr),
-        m_audioswcontext(nullptr)
+        m_audioswcontext(nullptr),
+        m_state(mt::DataSource::Stopped),
+        m_decodethread(nullptr),
+        m_shouldthreadrun(false),
+        m_playingtoeof(false),
+        m_decodedqueuelock(),
+        m_decodedvideopackets(),
+        m_decodedaudiopackets()
     {
         av_register_all();
     }
@@ -41,6 +49,7 @@ namespace mt
     void DataSource::Cleanup()
     {
         Stop();
+        StopDecodeThread();
         m_videostreamid = -1;
         m_audiostreamid = -1;
         m_videolength = -1;
@@ -85,6 +94,18 @@ namespace mt
             av_close_input_file(m_formatcontext);
             m_formatcontext = nullptr;
         }
+        m_playingtoeof = false;
+        {
+            sf::Lock lock(m_decodedqueuelock);
+            while (m_decodedvideopackets.size() > 0)
+            {
+                m_decodedvideopackets.pop();
+            }
+            while (m_decodedaudiopackets.size() > 0)
+            {
+                m_decodedaudiopackets.pop();
+            }
+        }
     }
 
     bool DataSource::LoadFromFile(const std::string& Filename, bool EnableVideo, bool EnableAudio)
@@ -128,7 +149,7 @@ namespace mt
                         m_videosize = { m_videocontext->width, m_videocontext->height };
                         m_videorawframe = CreatePictureFrame(m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, m_videorawbuffer);
                         m_videorgbaframe = CreatePictureFrame(PIX_FMT_RGBA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
-                        if (!m_videorawframe || m_videorgbaframe) m_videostreamid = -1;
+                        if (!m_videorawframe || !m_videorgbaframe) m_videostreamid = -1;
                         else
                         {
                             int swapmode = SWS_FAST_BILINEAR;
@@ -165,12 +186,12 @@ namespace mt
                                 if (inchanlayout == 0) inchanlayout = av_get_default_channel_layout(m_audiocontext->channels);
                                 uint64_t outchanlayout = inchanlayout;
                                 if (outchanlayout != AV_CH_LAYOUT_MONO) outchanlayout = AV_CH_LAYOUT_STEREO;
-                                av_opt_set_int(m_audiocontext, "in_channel_layout", inchanlayout, 0);
-                                av_opt_set_int(m_audiocontext, "out_channel_layout", outchanlayout, 0);
-                                av_opt_set_int(m_audiocontext, "in_sample_rate", m_audiocontext->sample_rate, 0);
-                                av_opt_set_int(m_audiocontext, "out_sample_rate", m_audiocontext->sample_rate, 0);
-                                av_opt_set_sample_fmt(m_audiocontext, "in_sample_fmt", m_audiocontext->sample_fmt, 0);
-                                av_opt_set_sample_fmt(m_audiocontext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+                                av_opt_set_int(m_audioswcontext, "in_channel_layout", inchanlayout, 0);
+                                av_opt_set_int(m_audioswcontext, "out_channel_layout", outchanlayout, 0);
+                                av_opt_set_int(m_audioswcontext, "in_sample_rate", m_audiocontext->sample_rate, 0);
+                                av_opt_set_int(m_audioswcontext, "out_sample_rate", m_audiocontext->sample_rate, 0);
+                                av_opt_set_sample_fmt(m_audioswcontext, "in_sample_fmt", m_audiocontext->sample_fmt, 0);
+                                av_opt_set_sample_fmt(m_audioswcontext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
                                 swr_init(m_audioswcontext);
                                 m_audiochannelcount = av_get_channel_layout_nb_channels(outchanlayout);
                             }
@@ -180,7 +201,11 @@ namespace mt
             }
         }
         if (m_formatcontext->duration != AV_NOPTS_VALUE) m_videolength = m_formatcontext->duration;
-        if (HasVideo() || HasAudio()) return true;
+        if (HasVideo() || HasAudio())
+        {
+            StartDecodeThread();
+            return true;
+        }
         else
         {
             Cleanup();
@@ -213,6 +238,98 @@ namespace mt
 
     }
 
+    void DataSource::StartDecodeThread()
+    {
+        if (m_shouldthreadrun) return;
+        m_shouldthreadrun = true;
+        m_decodethread.reset(new std::thread(&DataSource::DecodeThreadRun, this));
+    }
+
+    void DataSource::StopDecodeThread()
+    {
+        if (!m_shouldthreadrun) return;
+        m_shouldthreadrun = false;
+        if (m_decodethread->joinable()) m_decodethread->join();
+        m_decodethread.reset(nullptr);
+    }
+
+    void DataSource::DecodeThreadRun()
+    {
+        while (m_shouldthreadrun)
+        {
+            bool shoulddecode;
+            {
+                sf::Lock lock(m_decodedqueuelock);
+                if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
+                else shoulddecode = false;
+            }
+            while (shoulddecode && m_shouldthreadrun)
+            {
+                bool validpacket = false;
+                while (!validpacket && m_shouldthreadrun)
+                {
+                    AVPacket* packet;
+                    packet = (AVPacket*)av_malloc(sizeof(*packet));
+                    av_init_packet(packet);
+                    if (av_read_frame(m_formatcontext, packet) == 0)
+                    {
+                        if (packet->stream_index == m_videostreamid)
+                        {
+                            int decoderesult = 0;
+                            if (avcodec_decode_video2(m_videocontext, m_videorawframe, &decoderesult, packet) >= 0)
+                            {
+                                if (decoderesult)
+                                {
+                                    sws_scale(m_videoswcontext, m_videorawframe->data, m_videorawframe->linesize, 0, m_videocontext->height, m_videorgbaframe->data, m_videorgbaframe->linesize);
+                                    validpacket = true;
+                                    priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videorgbaframe->data[0], m_videosize.x, m_videosize.y));
+                                    {
+                                        sf::Lock lock(m_decodedqueuelock);
+                                        m_decodedvideopackets.push(packet);
+                                        if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
+                                        else shoulddecode = false;
+                                    }
+                                }
+                            }
+                        }
+                        else if (packet->stream_index == m_audiostreamid)
+                        {
+                            int decoderesult = 0;
+                            if (avcodec_decode_audio4(m_audiocontext, m_audiorawbuffer, &decoderesult, packet) > 0)
+                            {
+                                if (decoderesult)
+                                {
+                                    int convertlength = swr_convert(m_audioswcontext, &m_audiopcmbuffer, m_audiorawbuffer->nb_samples, (const uint8_t**)m_audiorawbuffer->extended_data, m_audiorawbuffer->nb_samples);
+                                    if (convertlength > 0)
+                                    {
+                                        validpacket = true;
+                                        priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audiopcmbuffer, convertlength, m_audiochannelcount));
+                                        {
+                                            sf::Lock lock(m_decodedqueuelock);
+                                            m_decodedaudiopackets.push(packet);
+                                            if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
+                                            else shoulddecode = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        av_free_packet(packet);
+                        av_free(packet);
+                    }
+                    else
+                    {
+                        m_playingtoeof = true;
+                        validpacket = true;
+                        av_free_packet(packet);
+                        av_free(packet);
+                    }
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+
     AVFrame* DataSource::CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
     {
         AVFrame *picture;
@@ -238,7 +355,7 @@ namespace mt
     }
 }
 
-mtDataSource* mtDataSource_Create()
+mtDataSource* mtDataSource_Create(void)
 {
     mtDataSource* datasource = new mtDataSource();
     datasource->Value = new mt::DataSource();
@@ -249,6 +366,11 @@ void mtDataSource_Destroy(mtDataSource* DataSource)
 {
     delete DataSource->Value;
     delete DataSource;
+}
+
+sfBool mtDataSource_LoadFromFile(mtDataSource* DataSource, const char* Filename, sfBool EnableVideo, sfBool EnableAudio)
+{
+    return DataSource->Value->LoadFromFile(Filename, EnableVideo == sfTrue, EnableAudio == sfTrue);
 }
 
 #endif

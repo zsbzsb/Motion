@@ -32,12 +32,16 @@ set(SRCROOT ${CMAKE_SOURCE_DIR}/src/Motion)
 # all source files
 set(SRC
     ${INCROOT}/Export.h
+    ${INCROOT}/priv/AudioPacket.hpp
+    ${SRCROOT}/AudioPacket.cpp
     ${INCROOT}/DataSource.h
     ${INCROOT}/DataSource.hpp
     ${SRCROOT}/DataSource.cpp
     ${SRCROOT}/DataSourceStruct.h
     ${SRCROOT}/RenderTextureStruct.h
     ${SRCROOT}/RenderWindowStruct.h
+    ${INCROOT}/priv/VideoPacket.hpp
+    ${SRCROOT}/VideoPacket.cpp
     ${SRCROOT}/ViewStruct.h
     ${INCROOT}/Types.h
 )

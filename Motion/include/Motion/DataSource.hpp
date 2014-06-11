@@ -3,9 +3,20 @@
 
 #include <string>
 #include <cstdint>
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <atomic>
+#include <queue>
 
 #include <SFML/System/NonCopyable.hpp>
+#include <SFML/System/Mutex.hpp>
+#include <SFML/System/Lock.hpp>
 #include <SFML/System/Vector2.hpp>
+
+#include <Motion/Export.h>
+#include <Motion/priv/AudioPacket.hpp>
+#include <Motion/priv/VideoPacket.hpp>
 
 extern "C"
 {
@@ -20,6 +31,13 @@ namespace mt
 {
     class MOTION_CXX_API DataSource : private sf::NonCopyable
     {
+    public:
+        enum State
+        {
+            Stopped,
+            Playing,
+            Paused
+        };
     private:
         int m_videostreamid;
         int m_audiostreamid;
@@ -39,9 +57,20 @@ namespace mt
         uint8_t* m_audiopcmbuffer;
         SwsContext* m_videoswcontext;
         SwrContext* m_audioswcontext;
+        State m_state;
+        std::unique_ptr<std::thread> m_decodethread;
+        std::atomic<bool> m_shouldthreadrun;
+        std::atomic<bool> m_playingtoeof;
+        sf::Mutex m_decodedqueuelock;
+        std::queue<priv::VideoPacketPtr> m_decodedvideopackets;
+        std::queue<priv::AudioPacketPtr> m_decodedaudiopackets;
+
         AVFrame* CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
         void DestroyPictureFrame(AVFrame*& PictureFrame, unsigned char*& PictureBuffer);
         void Cleanup();
+        void StartDecodeThread();
+        void StopDecodeThread();
+        void DecodeThreadRun();
     public:
         DataSource();
         ~DataSource();
