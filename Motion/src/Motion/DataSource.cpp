@@ -373,4 +373,29 @@ sfBool mtDataSource_LoadFromFile(mtDataSource* DataSource, const char* Filename,
     return DataSource->Value->LoadFromFile(Filename, EnableVideo == sfTrue, EnableAudio == sfTrue);
 }
 
+void mtDataSource_Play(mtDataSource* DataSource)
+{
+    DataSource->Value->Play();
+}
+
+void mtDataSource_Pause(mtDataSource* DataSource)
+{
+    DataSource->Value->Pause();
+}
+
+void mtDataSource_Stop(mtDataSource* DataSource)
+{
+    DataSource->Value->Stop();
+}
+
+sfBool mtDataSource_HasVideo(mtDataSource* DataSource)
+{
+    return DataSource->Value->HasVideo();
+}
+
+sfBool mtDataSource_HasAudio(mtDataSource* DataSource)
+{
+    return DataSource->Value->HasAudio();
+}
+
 #endif
