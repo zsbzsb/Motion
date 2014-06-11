@@ -14,18 +14,24 @@
 #endif
 
 #if defined(MOTION_SYSTEM_WINDOWS)
-    #define MOTION_API_EXPORT extern "C" __declspec(dllexport)
-    #define MOTION_API_IMPORT extern __declspec(dllimport)
+    #define MOTION_C_API_EXPORT extern "C" __declspec(dllexport)
+    #define MOTION_C_API_IMPORT extern __declspec(dllimport)
+    #define MOTION_CXX_API_EXPORT __declspec(dllexport)
+    #define MOTION_CXX_API_IMPORT __declspec(dllimport)
     #ifdef _MSC_VER
         #pragma warning(disable : 4251)
     #endif
 #else
     #if __GNUC__ >= 4
-        #define MOTION_API_EXPORT extern "C" __attribute__ ((__visibility__ ("default")))
-        #define MOTION_API_IMPORT extern __attribute__ ((__visibility__ ("default")))
+        #define MOTION_C_API_EXPORT extern "C" __attribute__ ((__visibility__ ("default")))
+        #define MOTION_C_API_IMPORT extern __attribute__ ((__visibility__ ("default")))
+        #define MOTION_CXX_API_EXPORT __attribute__ ((__visibility__ ("default")))
+        #define MOTION_CXX_API_IMPORT __attribute__ ((__visibility__ ("default")))
     #else
-        #define MOTION_API_EXPORT extern "C"
-        #define MOTION_API_IMPORT extern
+        #define MOTION_C_API_EXPORT extern "C"
+        #define MOTION_C_API_IMPORT extern
+        #define MOTION_CXX_API_EXPORT
+        #define MOTION_CXX_API_IMPORT
     #endif
 #endif
 

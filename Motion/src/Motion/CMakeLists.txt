@@ -32,6 +32,10 @@ set(SRCROOT ${CMAKE_SOURCE_DIR}/src/Motion)
 # all source files
 set(SRC
     ${INCROOT}/Export.h
+    ${INCROOT}/DataSource.h
+    ${INCROOT}/DataSource.hpp
+    ${SRCROOT}/DataSource.cpp
+    ${SRCROOT}/DataSourceStruct.h
     ${SRCROOT}/RenderTextureStruct.h
     ${SRCROOT}/RenderWindowStruct.h
     ${SRCROOT}/ViewStruct.h
@@ -42,3 +46,15 @@ set(SRC
 motion_add_library(Motion
                   SOURCES ${SRC}
                   DEPENDS ${SFML_GRAPHICS_LIBRARY} ${SFML_WINDOW_LIBRARY} ${SFML_SYSTEM_LIBRARY} ${SFML_GRAPHICS_DEPENDENCIES} ${SFML_WINDOW_DEPENDENCIES} ${SFML_SYSTEM_DEPENDENCIES})
+
+
+# include FFMPEG
+motion_set_option(FFMPEG_INCLUDE_DIR "FFMPEG_INCLUDE_DIR Not Found" PATH "FFMPEG Include Directory")
+motion_set_option(FFMPEG_LIBRARY_DIR "FFMPEG_LIBRARY_DIR Not Found" PATH "FFMPEG Library Directory")
+motion_set_option(FFMPEG_AVUTIL_LIB "avutil.lib" STRING "avutil")
+motion_set_option(FFMPEG_AVFORMAT_LIB "avformat.lib" STRING "avformat")
+motion_set_option(FFMPEG_AVCODEC_LIB "avcodec.lib" STRING "avcodec")
+motion_set_option(FFMPEG_SWSCALE_LIB "swscale.lib" STRING "swscale")
+motion_set_option(FFMPEG_SWRESAMPLE_LIB "swresample.lib" STRING "swresample")
+include_directories(${FFMPEG_INCLUDE_DIR})
+target_link_libraries(Motion ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVUTIL_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVFORMAT_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVCODEC_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWSCALE_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWRESAMPLE_LIB})
