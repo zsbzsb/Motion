@@ -30,7 +30,7 @@ namespace mt
         m_audiopcmbuffer(nullptr),
         m_videoswcontext(nullptr),
         m_audioswcontext(nullptr),
-        m_state(mt::DataSource::Stopped),
+        m_state(DataSource::Stopped),
         m_decodethread(nullptr),
         m_shouldthreadrun(false),
         m_playingtoeof(false),
@@ -230,7 +230,7 @@ namespace mt
         return m_videosize;
     }
 
-    const mt::DataSource::State DataSource::GetState()
+    const DataSource::State DataSource::GetState()
     {
         return m_state;
     }
@@ -257,32 +257,43 @@ namespace mt
         }
     }
 
+    const int DataSource::GetAudioChannelCount()
+    {
+        return m_audiochannelcount;
+    }
+
+    const int DataSource::GetAudioSampleRate()
+    {
+        if (!HasAudio()) return -1;
+        return m_audiocontext->sample_rate;
+    }
+
     void DataSource::Play()
     {
-        if ((HasVideo() || HasAudio()) && m_state != mt::DataSource::Playing)
+        if ((HasVideo() || HasAudio()) && m_state != DataSource::Playing)
         {
-            if (m_state == mt::DataSource::Stopped)
+            if (m_state == DataSource::Stopped)
             {
                 m_playingtoeof = false;
                 // TODO set frame jump amount to 1
             }
-            m_state = mt::DataSource::Playing;
+            m_state = DataSource::Playing;
         }
     }
 
     void DataSource::Pause()
     {
-        if (m_state == mt::DataSource::Playing)
+        if (m_state == DataSource::Playing)
         {
-            m_state = mt::DataSource::Paused;
+            m_state = DataSource::Paused;
         }
     }
 
     void DataSource::Stop()
     {
-        if (m_state != mt::DataSource::Stopped)
+        if (m_state != DataSource::Stopped)
         {
-            m_state = mt::DataSource::Stopped;
+            m_state = DataSource::Stopped;
             m_playingtoeof = false;
             {
                 sf::Lock lock(m_decodedqueuelock);
@@ -343,7 +354,7 @@ namespace mt
                 bool filled = false;
                 for (auto& audioplayback : m_audioplaybacks)
                 {
-                    sf::Lock audioplaybacklock(audioplayback->m_queuelock);
+                    sf::Lock audioplaybacklock(audioplayback->m_protectionlock);
                     audioplayback->m_queuedaudiopackets.push(m_decodedaudiopackets.front());
                     if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
                     {
@@ -362,7 +373,7 @@ namespace mt
             {
                 for (auto& audioplayback : m_audioplaybacks)
                 {
-                    sf::Lock audioplaybacklock(audioplayback->m_queuelock);
+                    sf::Lock audioplaybacklock(audioplayback->m_protectionlock);
                     if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
                     {
                         m_isstarving = true;
@@ -486,7 +497,7 @@ namespace mt
 mtDataSource* mtDataSource_Create(void)
 {
     mtDataSource* datasource = new mtDataSource();
-    datasource->Value = new mt::DataSource();
+    datasource->Value = new DataSource();
     return datasource;
 }
 

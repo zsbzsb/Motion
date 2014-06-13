@@ -3,9 +3,17 @@
 
 #include <memory>
 #include <queue>
+#include <thread>
+#include <chrono>
+#include <cmath>
+#include <vector>
+#include <cinttypes>
 
 #include <SFML/System/NonCopyable.hpp>
 #include <SFML/System/Time.hpp>
+#include <SFML/System/Mutex.hpp>
+#include <SFML/System/Lock.hpp>
+#include <SFML/Audio/SoundStream.hpp>
 
 #include <Motion/Export.h>
 #include <Motion/DataSource.hpp>
@@ -13,15 +21,26 @@
 
 namespace mt
 {
-    class MOTION_CXX_API AudioPlayback
+    class MOTION_CXX_API AudioPlayback : private sf::NonCopyable, private sf::SoundStream
     {
         friend class DataSource;
 
     private:
-
-        mt::DataSource* m_datasource;
-        sf::Mutex m_queuelock;
+        sf::Time m_audioplayrate;
+        int m_channelcount;
+        sf::Time m_audioposition;
+        sf::Time m_audiooffsetcorrection;
+        DataSource* m_datasource;
+        sf::Mutex m_protectionlock;
         std::queue<priv::AudioPacketPtr> m_queuedaudiopackets;
+        priv::AudioPacketPtr m_activepacket;
+
+        bool onGetData(Chunk& data);
+        void onSeek(sf::Time timeOffset);
+    public:
+        AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection = sf::milliseconds(300));
+        ~AudioPlayback();
+        void Update(sf::Time DeltaTime);
     };
 }
 

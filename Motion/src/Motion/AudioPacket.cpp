@@ -7,7 +7,7 @@ namespace mt
 {
     namespace priv
     {
-        AudioPacket::AudioPacket(uint8_t* SamplesSource, std::size_t SampleCount, std::size_t ChannelCount) :
+        AudioPacket::AudioPacket(void* SamplesSource, std::size_t SampleCount, std::size_t ChannelCount) :
             m_samples(new int16_t[SampleCount * ChannelCount]),
             m_samplebufferlength(SampleCount * ChannelCount)
         {
@@ -17,6 +17,16 @@ namespace mt
         AudioPacket::~AudioPacket()
         {
             delete[] m_samples;
+        }
+
+        const int16_t* AudioPacket::GetSamplesBuffer()
+        {
+            return m_samples;
+        }
+
+        const std::size_t AudioPacket::GetSamplesBufferLength()
+        {
+            return m_samplebufferlength;
         }
     }
 }

@@ -5,7 +5,7 @@
 
 namespace mt
 {
-    VideoPlayback::VideoPlayback(mt::DataSource& DataSource, sf::Color BufferColor) :
+    VideoPlayback::VideoPlayback(DataSource& DataSource, sf::Color BufferColor) :
         m_videotexture(),
         m_videosprite(),
         m_buffercolor(BufferColor),
@@ -15,7 +15,7 @@ namespace mt
         m_frametime(DataSource.GetVideoFrameTime()),
         m_framejump(0)
     {
-        if (DataSource.HasVideo())
+        if (m_datasource->HasVideo())
         {
             m_datasource->m_videoplaybacks.push_back(this);
             m_videotexture.create(m_datasource->GetVideoSize().x, m_datasource->GetVideoSize().y);
@@ -58,7 +58,7 @@ namespace mt
     {
         if (m_datasource)
         {
-            if (m_datasource->GetState() == mt::DataSource::Playing)
+            if (m_datasource->GetState() == DataSource::Playing)
             {
                 m_elapsedtime += DeltaTime;
                 int jumpcount = static_cast<int>(std::floor(m_elapsedtime.asMicroseconds() / m_frametime.asMicroseconds()));

@@ -29,7 +29,7 @@ namespace mt
         sf::Texture m_videotexture;
         sf::Sprite m_videosprite;
         sf::Color m_buffercolor;
-        mt::DataSource* m_datasource;
+        DataSource* m_datasource;
         std::queue<priv::VideoPacketPtr> m_queuedvideopackets;
         sf::Time m_elapsedtime;
         sf::Time m_frametime;
@@ -38,12 +38,12 @@ namespace mt
         void SetInitialBuffer();
 
     public:
-        VideoPlayback(mt::DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);
+        VideoPlayback(DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);
         ~VideoPlayback();
         void Update(sf::Time DeltaTime);
 
     protected:
-        virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
+        void draw(sf::RenderTarget& target, sf::RenderStates states) const;
     };
 }
 

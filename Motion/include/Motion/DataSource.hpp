@@ -93,8 +93,10 @@ namespace mt
         const bool HasVideo();
         const bool HasAudio();
         const sf::Vector2i GetVideoSize();
-        const mt::DataSource::State GetState();
+        const DataSource::State GetState();
         const sf::Time GetVideoFrameTime();
+        const int GetAudioChannelCount();
+        const int GetAudioSampleRate();
         void Update();
     };
 }
