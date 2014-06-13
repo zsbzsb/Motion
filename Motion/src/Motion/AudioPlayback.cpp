@@ -38,6 +38,7 @@ namespace mt
             }
             m_datasource = nullptr;
         }
+        stop();
     }
 
     bool AudioPlayback::onGetData(Chunk& data)
