@@ -54,7 +54,6 @@ namespace mt
         while (m_audioplaybacks.size() > 0)
         {
             m_audioplaybacks.back()->m_datasource = nullptr;
-
             m_audioplaybacks.pop_back();
         }
         Cleanup();
@@ -497,7 +496,7 @@ namespace mt
 mtDataSource* mtDataSource_Create(void)
 {
     mtDataSource* datasource = new mtDataSource();
-    datasource->Value = new DataSource();
+    datasource->Value = new mt::DataSource();
     return datasource;
 }
 
