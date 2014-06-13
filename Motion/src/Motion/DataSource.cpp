@@ -36,20 +36,33 @@ namespace mt
         m_playingtoeof(false),
         m_decodedqueuelock(),
         m_decodedvideopackets(),
-        m_decodedaudiopackets()
+        m_decodedaudiopackets(),
+        m_videoplaybacks(),
+        m_audioplaybacks(),
+        m_isstarving(true)
     {
         av_register_all();
     }
 
     DataSource::~DataSource()
     {
+        while (m_videoplaybacks.size() > 0)
+        {
+            m_videoplaybacks.back()->m_datasource = nullptr;
+            m_videoplaybacks.pop_back();
+        }
+        while (m_audioplaybacks.size() > 0)
+        {
+            m_audioplaybacks.back()->m_datasource = nullptr;
+            m_audioplaybacks.pop_back();
+        }
         Cleanup();
     }
 
     void DataSource::Cleanup()
     {
-        Stop();
         StopDecodeThread();
+        Stop();
         m_videostreamid = -1;
         m_audiostreamid = -1;
         m_videolength = -1;
@@ -93,18 +106,6 @@ namespace mt
         {
             av_close_input_file(m_formatcontext);
             m_formatcontext = nullptr;
-        }
-        m_playingtoeof = false;
-        {
-            sf::Lock lock(m_decodedqueuelock);
-            while (m_decodedvideopackets.size() > 0)
-            {
-                m_decodedvideopackets.pop();
-            }
-            while (m_decodedaudiopackets.size() > 0)
-            {
-                m_decodedaudiopackets.pop();
-            }
         }
     }
 
@@ -213,29 +214,136 @@ namespace mt
         }
     }
 
-    bool DataSource::HasVideo()
+    const bool DataSource::HasVideo()
     {
         return m_videostreamid != -1;
     }
 
-    bool DataSource::HasAudio()
+    const bool DataSource::HasAudio()
     {
         return m_audiostreamid != -1;
     }
 
+    const sf::Vector2i DataSource::GetVideoSize()
+    {
+        return m_videosize;
+    }
+
+    const mt::DataSource::State DataSource::GetState()
+    {
+        return m_state;
+    }
+
+    const sf::Time DataSource::GetVideoFrameTime()
+    {
+        if (!HasVideo()) return sf::Time::Zero;
+        AVRational r1 = m_formatcontext->streams[m_videostreamid]->avg_frame_rate;
+        AVRational r2 = m_formatcontext->streams[m_videostreamid]->r_frame_rate;
+        if ((!r1.num || !r1.den) && (!r2.num || !r2.den))
+        {
+            return sf::seconds(1.0f / 29.97f);
+        }
+        else
+        {
+            if (r2.num && r1.den)
+            {
+                return sf::seconds(1.0f / ((float)r1.num / (float)r1.den));
+            }
+            else
+            {
+                return sf::seconds(1.0f / ((float)r2.num / (float)r2.den));
+            }
+        }
+    }
+
     void DataSource::Play()
     {
-
+        if ((HasVideo() || HasAudio()) && m_state != mt::DataSource::Playing)
+        {
+            if (m_state == mt::DataSource::Stopped)
+            {
+                m_playingtoeof = false;
+                // TODO set frame jump amount to 1
+            }
+            m_state = mt::DataSource::Playing;
+        }
     }
 
     void DataSource::Pause()
     {
-
+        if (m_state == mt::DataSource::Playing)
+        {
+            m_state = mt::DataSource::Paused;
+        }
     }
 
     void DataSource::Stop()
     {
+        if (m_state != mt::DataSource::Stopped)
+        {
+            m_state = mt::DataSource::Stopped;
+            m_playingtoeof = false;
+            {
+                sf::Lock lock(m_decodedqueuelock);
+                while (m_decodedvideopackets.size() > 0)
+                {
+                    m_decodedvideopackets.pop();
+                }
+                while (m_decodedaudiopackets.size() > 0)
+                {
+                    m_decodedaudiopackets.pop();
+                }
+            }
+            // TODO jump back to begining
+        }
+    }
 
+    void DataSource::Update()
+    {
+        sf::Lock lock(m_decodedqueuelock);
+        m_isstarving = false;
+        while (m_decodedvideopackets.size() > 0)
+        {
+            for (auto& videoplayback : m_videoplaybacks)
+            {
+                videoplayback->m_queuedvideopackets.push(m_decodedvideopackets.front());
+                if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT) m_isstarving = true;
+            }
+            m_decodedvideopackets.pop();
+        }
+        if (!m_isstarving)
+        {
+            for (auto& videoplayback : m_videoplaybacks)
+            {
+                if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
+                {
+                    m_isstarving = true;
+                    break;
+                }
+            }
+        }
+        while (m_decodedaudiopackets.size() > 0)
+        {
+            for (auto& audioplayback : m_audioplaybacks)
+            {
+                sf::Lock audioplaybacklock(audioplayback->m_queuelock);
+                audioplayback->m_queuedaudiopackets.push(m_decodedaudiopackets.front());
+                if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT) m_isstarving = true;
+            }
+            m_decodedaudiopackets.pop();
+        }
+        if (!m_isstarving)
+        {
+            for (auto& audioplayback : m_audioplaybacks)
+            {
+                sf::Lock audioplaybacklock(audioplayback->m_queuelock);
+                if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
+                {
+                    m_isstarving = true;
+                    break;
+                }
+            }
+        }
     }
 
     void DataSource::StartDecodeThread()
@@ -257,13 +365,7 @@ namespace mt
     {
         while (m_shouldthreadrun)
         {
-            bool shoulddecode;
-            {
-                sf::Lock lock(m_decodedqueuelock);
-                if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
-                else shoulddecode = false;
-            }
-            while (shoulddecode && m_shouldthreadrun)
+            while (m_isstarving && m_shouldthreadrun)
             {
                 bool validpacket = false;
                 while (!validpacket && m_shouldthreadrun)
@@ -283,12 +385,8 @@ namespace mt
                                     sws_scale(m_videoswcontext, m_videorawframe->data, m_videorawframe->linesize, 0, m_videocontext->height, m_videorgbaframe->data, m_videorgbaframe->linesize);
                                     validpacket = true;
                                     priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videorgbaframe->data[0], m_videosize.x, m_videosize.y));
-                                    {
-                                        sf::Lock lock(m_decodedqueuelock);
-                                        m_decodedvideopackets.push(packet);
-                                        if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
-                                        else shoulddecode = false;
-                                    }
+                                    sf::Lock lock(m_decodedqueuelock);
+                                    m_decodedvideopackets.push(packet);
                                 }
                             }
                         }
@@ -304,12 +402,8 @@ namespace mt
                                     {
                                         validpacket = true;
                                         priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audiopcmbuffer, convertlength, m_audiochannelcount));
-                                        {
-                                            sf::Lock lock(m_decodedqueuelock);
-                                            m_decodedaudiopackets.push(packet);
-                                            if (((m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT && HasVideo()) || (m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT && HasAudio())) && !m_playingtoeof) shoulddecode = true;
-                                            else shoulddecode = false;
-                                        }
+                                        sf::Lock lock(m_decodedqueuelock);
+                                        m_decodedaudiopackets.push(packet);
                                     }
                                 }
                             }

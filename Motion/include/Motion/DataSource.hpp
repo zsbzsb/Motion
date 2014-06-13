@@ -8,15 +8,19 @@
 #include <chrono>
 #include <atomic>
 #include <queue>
+#include <vector>
 
 #include <SFML/System/NonCopyable.hpp>
 #include <SFML/System/Mutex.hpp>
 #include <SFML/System/Lock.hpp>
 #include <SFML/System/Vector2.hpp>
+#include <SFML/System/Time.hpp>
 
 #include <Motion/Export.h>
 #include <Motion/priv/AudioPacket.hpp>
+#include <Motion/AudioPlayback.hpp>
 #include <Motion/priv/VideoPacket.hpp>
+#include <Motion/VideoPlayback.hpp>
 
 extern "C"
 {
@@ -31,6 +35,9 @@ namespace mt
 {
     class MOTION_CXX_API DataSource : private sf::NonCopyable
     {
+        friend class VideoPlayback;
+        friend class AudioPlayback;
+
     public:
         enum State
         {
@@ -38,6 +45,7 @@ namespace mt
             Playing,
             Paused
         };
+
     private:
         int m_videostreamid;
         int m_audiostreamid;
@@ -64,6 +72,9 @@ namespace mt
         sf::Mutex m_decodedqueuelock;
         std::queue<priv::VideoPacketPtr> m_decodedvideopackets;
         std::queue<priv::AudioPacketPtr> m_decodedaudiopackets;
+        std::vector<mt::VideoPlayback*> m_videoplaybacks;
+        std::vector<mt::AudioPlayback*> m_audioplaybacks;
+        std::atomic<bool> m_isstarving;
 
         AVFrame* CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
         void DestroyPictureFrame(AVFrame*& PictureFrame, unsigned char*& PictureBuffer);
@@ -71,6 +82,7 @@ namespace mt
         void StartDecodeThread();
         void StopDecodeThread();
         void DecodeThreadRun();
+
     public:
         DataSource();
         ~DataSource();
@@ -78,8 +90,12 @@ namespace mt
         void Play();
         void Pause();
         void Stop();
-        bool HasVideo();
-        bool HasAudio();
+        const bool HasVideo();
+        const bool HasAudio();
+        const sf::Vector2i GetVideoSize();
+        const mt::DataSource::State GetState();
+        const sf::Time GetVideoFrameTime();
+        void Update();
     };
 }
 

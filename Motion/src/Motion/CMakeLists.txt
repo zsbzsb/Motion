@@ -34,6 +34,8 @@ set(SRC
     ${INCROOT}/Export.h
     ${INCROOT}/priv/AudioPacket.hpp
     ${SRCROOT}/AudioPacket.cpp
+    ${INCROOT}/AudioPlayback.hpp
+    ${SRCROOT}/AudioPlayback.cpp
     ${INCROOT}/DataSource.h
     ${INCROOT}/DataSource.hpp
     ${SRCROOT}/DataSource.cpp
@@ -42,6 +44,8 @@ set(SRC
     ${SRCROOT}/RenderWindowStruct.h
     ${INCROOT}/priv/VideoPacket.hpp
     ${SRCROOT}/VideoPacket.cpp
+    ${INCROOT}/VideoPlayback.hpp
+    ${SRCROOT}/VideoPlayback.cpp
     ${SRCROOT}/ViewStruct.h
     ${INCROOT}/Types.h
 )

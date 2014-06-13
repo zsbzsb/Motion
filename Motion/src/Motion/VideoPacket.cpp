@@ -17,6 +17,11 @@ namespace mt
         {
             delete[] m_rgbabuffer;
         }
+
+        const uint8_t* VideoPacket::GetRGBABuffer()
+        {
+            return m_rgbabuffer;
+        }
     }
 }
 
