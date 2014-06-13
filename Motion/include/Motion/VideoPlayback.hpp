@@ -22,7 +22,6 @@
 namespace mt
 {
     class DataSource;
-    enum State;
 
     class MOTION_CXX_API VideoPlayback : private sf::NonCopyable, public sf::Drawable, public sf::Transformable
     {

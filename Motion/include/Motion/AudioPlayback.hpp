@@ -22,7 +22,6 @@
 namespace mt
 {
     class DataSource;
-    enum State;
 
     class MOTION_CXX_API AudioPlayback : private sf::NonCopyable, private sf::SoundStream
     {
