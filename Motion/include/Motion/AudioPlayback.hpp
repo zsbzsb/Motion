@@ -21,6 +21,9 @@
 
 namespace mt
 {
+    class DataSource;
+    enum State;
+
     class MOTION_CXX_API AudioPlayback : private sf::NonCopyable, private sf::SoundStream
     {
         friend class DataSource;
@@ -37,6 +40,7 @@ namespace mt
 
         bool onGetData(Chunk& data);
         void onSeek(sf::Time timeOffset);
+        void StateChanged(State PreviousState, State NewState);
     public:
         AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection = sf::milliseconds(300));
         ~AudioPlayback();

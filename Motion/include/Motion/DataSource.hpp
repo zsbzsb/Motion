@@ -33,18 +33,20 @@ extern "C"
 
 namespace mt
 {
+    class VideoPlayback;
+    class AudioPlayback;
+
+    enum State
+    {
+        Stopped,
+        Playing,
+        Paused
+    };
+
     class MOTION_CXX_API DataSource : private sf::NonCopyable
     {
         friend class VideoPlayback;
         friend class AudioPlayback;
-
-    public:
-        enum State
-        {
-            Stopped,
-            Playing,
-            Paused
-        };
 
     private:
         int m_videostreamid;
@@ -82,6 +84,7 @@ namespace mt
         void StartDecodeThread();
         void StopDecodeThread();
         void DecodeThreadRun();
+        void NotifyStateChanged(State NewState);
 
     public:
         DataSource();
@@ -93,7 +96,7 @@ namespace mt
         const bool HasVideo();
         const bool HasAudio();
         const sf::Vector2i GetVideoSize();
-        const DataSource::State GetState();
+        const State GetState();
         const sf::Time GetVideoFrameTime();
         const int GetAudioChannelCount();
         const int GetAudioSampleRate();

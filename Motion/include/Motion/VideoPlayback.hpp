@@ -21,6 +21,9 @@
 
 namespace mt
 {
+    class DataSource;
+    enum State;
+
     class MOTION_CXX_API VideoPlayback : private sf::NonCopyable, public sf::Drawable, public sf::Transformable
     {
         friend class DataSource;
@@ -36,6 +39,7 @@ namespace mt
         int m_framejump;
 
         void SetInitialBuffer();
+        void StateChanged(State PreviousState, State NewState);
 
     public:
         VideoPlayback(DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);

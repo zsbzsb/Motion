@@ -52,6 +52,10 @@ if(MOTION_OS_WINDOWS)
     endif()
 endif()
 
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS -std=c++11)
+endif()
+
 # add the subdirectories
 add_subdirectory(src/Motion)
 

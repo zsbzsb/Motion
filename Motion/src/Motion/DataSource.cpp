@@ -30,7 +30,7 @@ namespace mt
         m_audiopcmbuffer(nullptr),
         m_videoswcontext(nullptr),
         m_audioswcontext(nullptr),
-        m_state(DataSource::Stopped),
+        m_state(State::Stopped),
         m_decodethread(nullptr),
         m_shouldthreadrun(false),
         m_playingtoeof(false),
@@ -229,7 +229,7 @@ namespace mt
         return m_videosize;
     }
 
-    const DataSource::State DataSource::GetState()
+    const State DataSource::GetState()
     {
         return m_state;
     }
@@ -269,30 +269,32 @@ namespace mt
 
     void DataSource::Play()
     {
-        if ((HasVideo() || HasAudio()) && m_state != DataSource::Playing)
+        if ((HasVideo() || HasAudio()) && m_state != State::Playing)
         {
-            if (m_state == DataSource::Stopped)
+            if (m_state == State::Stopped)
             {
                 m_playingtoeof = false;
-                // TODO set frame jump amount to 1
             }
-            m_state = DataSource::Playing;
+            NotifyStateChanged(State::Playing);
+            m_state = State::Playing;
         }
     }
 
     void DataSource::Pause()
     {
-        if (m_state == DataSource::Playing)
+        if (m_state == State::Playing)
         {
-            m_state = DataSource::Paused;
+            NotifyStateChanged(State::Paused);
+            m_state = State::Paused;
         }
     }
 
     void DataSource::Stop()
     {
-        if (m_state != DataSource::Stopped)
+        if (m_state != State::Stopped)
         {
-            m_state = DataSource::Stopped;
+            NotifyStateChanged(State::Stopped);
+            m_state = State::Stopped;
             m_playingtoeof = false;
             {
                 sf::Lock lock(m_decodedqueuelock);
@@ -305,7 +307,18 @@ namespace mt
                     m_decodedaudiopackets.pop();
                 }
             }
-            // TODO jump back to begining
+        }
+    }
+
+    void DataSource::NotifyStateChanged(State NewState)
+    {
+        for (auto& videoplayback : m_videoplaybacks)
+        {
+            videoplayback->StateChanged(m_state, NewState);
+        }
+        for (auto& audioplayback : m_videoplaybacks)
+        {
+            audioplayback->StateChanged(m_state, NewState);
         }
     }
 

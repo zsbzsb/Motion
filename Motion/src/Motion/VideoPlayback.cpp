@@ -58,7 +58,7 @@ namespace mt
     {
         if (m_datasource)
         {
-            if (m_datasource->GetState() == DataSource::Playing)
+            if (m_datasource->GetState() == State::Playing)
             {
                 m_elapsedtime += DeltaTime;
                 int jumpcount = static_cast<int>(std::floor(m_elapsedtime.asMicroseconds() / m_frametime.asMicroseconds()));
@@ -85,6 +85,11 @@ namespace mt
                 }
             }
         }
+    }
+
+    void VideoPlayback::StateChanged(State PreviousState, State NewState)
+    {
+
     }
 }
 

@@ -105,6 +105,11 @@ namespace mt
         sf::Lock lock(m_protectionlock);
         m_audioposition -= DeltaTime;
     }
+
+    void AudioPlayback::StateChanged(State PreviousState, State NewState)
+    {
+
+    }
 }
 
 #endif
