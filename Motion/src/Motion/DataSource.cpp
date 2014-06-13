@@ -7,7 +7,7 @@
 #include <Motion/DataSourceStruct.h>
 
 #define MAX_AUDIO_SAMPLES 192000
-#define PACKET_QUEUE_AMOUNT 10
+#define PACKET_QUEUE_AMOUNT 5
 
 namespace mt
 {
@@ -307,12 +307,22 @@ namespace mt
         {
             while (m_decodedvideopackets.size() > 0)
             {
+                bool filled = false;
                 for (auto& videoplayback : m_videoplaybacks)
                 {
                     videoplayback->m_queuedvideopackets.push(m_decodedvideopackets.front());
-                    if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT) m_isstarving = true;
+                    if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
+                    {
+                        m_isstarving = true;
+                        filled = false;
+                    }
+                    else if (!filled)
+                    {
+                        filled = true;
+                    }
                 }
                 m_decodedvideopackets.pop();
+                if (filled) break;
             }
             if (!m_isstarving)
             {
@@ -330,13 +340,23 @@ namespace mt
         {
             while (m_decodedaudiopackets.size() > 0)
             {
+                bool filled = false;
                 for (auto& audioplayback : m_audioplaybacks)
                 {
                     sf::Lock audioplaybacklock(audioplayback->m_queuelock);
                     audioplayback->m_queuedaudiopackets.push(m_decodedaudiopackets.front());
-                    if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT) m_isstarving = true;
+                    if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
+                    {
+                        m_isstarving = true;
+                        filled = false;
+                    }
+                    else if (!filled)
+                    {
+                        filled = true;
+                    }
                 }
                 m_decodedaudiopackets.pop();
+                if (filled) break;
             }
             if (!m_isstarving)
             {
