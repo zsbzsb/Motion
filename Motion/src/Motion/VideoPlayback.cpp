@@ -89,7 +89,19 @@ namespace mt
 
     void VideoPlayback::StateChanged(State PreviousState, State NewState)
     {
-
+        if (NewState == State::Playing && PreviousState == State::Stopped)
+        {
+            m_framejump = 1;
+        }
+        else if (NewState == State::Stopped)
+        {
+            m_framejump = 0;
+            while (m_queuedvideopackets.size() > 0)
+            {
+                m_queuedvideopackets.pop();
+            }
+            SetInitialBuffer();
+        }
     }
 }
 

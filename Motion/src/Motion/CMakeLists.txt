@@ -42,6 +42,7 @@ set(SRC
     ${SRCROOT}/DataSourceStruct.h
     ${SRCROOT}/RenderTextureStruct.h
     ${SRCROOT}/RenderWindowStruct.h
+    ${INCROOT}/State.hpp
     ${INCROOT}/priv/VideoPacket.hpp
     ${SRCROOT}/VideoPacket.cpp
     ${INCROOT}/VideoPlayback.hpp

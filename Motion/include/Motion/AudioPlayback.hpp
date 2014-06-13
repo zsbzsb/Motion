@@ -18,6 +18,7 @@
 #include <Motion/Export.h>
 #include <Motion/DataSource.hpp>
 #include <Motion/priv/AudioPacket.hpp>
+#include <Motion/State.hpp>
 
 namespace mt
 {

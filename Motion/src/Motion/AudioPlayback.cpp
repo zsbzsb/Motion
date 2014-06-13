@@ -19,6 +19,7 @@ namespace mt
         {
             m_datasource->m_audioplaybacks.push_back(this);
             initialize(m_channelcount, m_datasource->GetAudioSampleRate());
+            StateChanged(m_datasource->GetState(), m_datasource->GetState());
         }
     }
 
@@ -108,7 +109,22 @@ namespace mt
 
     void AudioPlayback::StateChanged(State PreviousState, State NewState)
     {
-
+        if (NewState == State::Playing)
+        {
+            play();
+        }
+        else if (NewState == State::Paused)
+        {
+            pause();
+        }
+        else if (NewState == State::Stopped)
+        {
+            stop();
+            while (m_queuedaudiopackets.size() > 0)
+            {
+                m_queuedaudiopackets.pop();
+            }
+        }
     }
 }
 

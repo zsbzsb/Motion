@@ -21,6 +21,7 @@
 #include <Motion/AudioPlayback.hpp>
 #include <Motion/priv/VideoPacket.hpp>
 #include <Motion/VideoPlayback.hpp>
+#include <Motion/State.hpp>
 
 extern "C"
 {
@@ -35,13 +36,6 @@ namespace mt
 {
     class VideoPlayback;
     class AudioPlayback;
-
-    enum State
-    {
-        Stopped,
-        Playing,
-        Paused
-    };
 
     class MOTION_CXX_API DataSource : private sf::NonCopyable
     {

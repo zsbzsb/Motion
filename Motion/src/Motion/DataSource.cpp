@@ -54,6 +54,7 @@ namespace mt
         while (m_audioplaybacks.size() > 0)
         {
             m_audioplaybacks.back()->m_datasource = nullptr;
+            m_audioplaybacks.back()->stop();
             m_audioplaybacks.pop_back();
         }
         Cleanup();

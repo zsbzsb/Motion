@@ -17,6 +17,7 @@
 
 #include <Motion/Export.h>
 #include <Motion/DataSource.hpp>
+#include <Motion/State.hpp>
 #include <Motion/priv/VideoPacket.hpp>
 
 namespace mt
