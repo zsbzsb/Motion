@@ -19,6 +19,7 @@ namespace mt
         m_filelength(sf::seconds(-1)),
         m_videosize(-1, -1),
         m_audiochannelcount(-1),
+        m_playbackspeed(1),
         m_formatcontext(nullptr),
         m_videocontext(nullptr),
         m_audiocontext(nullptr),
@@ -355,12 +356,31 @@ namespace mt
 
     void DataSource::Update()
     {
-        sf::Time deltatime = m_updateclock.restart();
+        sf::Time deltatime = m_updateclock.restart() * m_playbackspeed;
         sf::Lock lock(m_playbacklock);
         m_playingoffset += deltatime;
         for (auto& videoplayback : m_videoplaybacks)
         {
             videoplayback->Update(deltatime);
+        }
+        if (m_playingoffset > m_filelength)
+        {
+            Stop();
+        }
+    }
+
+    const float DataSource::GetPlaybackSpeed()
+    {
+        return m_playbackspeed;
+    }
+
+    void DataSource::SetPlaybackSpeed(float PlaybackSpeed)
+    {
+        m_playbackspeed = PlaybackSpeed;
+        sf::Lock lock(m_playbacklock);
+        for (auto& audioplayback : m_audioplaybacks)
+        {
+            audioplayback->setPitch(PlaybackSpeed);
         }
     }
 

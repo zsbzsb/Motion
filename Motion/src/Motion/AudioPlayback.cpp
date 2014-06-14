@@ -19,6 +19,7 @@ namespace mt
         if (m_datasource->HasAudio())
         {
             initialize(m_channelcount, m_datasource->GetAudioSampleRate());
+            setPitch(m_datasource->GetPlaybackSpeed());
             StateChanged(m_datasource->GetState(), m_datasource->GetState());
             sf::Lock lock(m_datasource->m_playbacklock);
             m_datasource->m_audioplaybacks.push_back(this);
@@ -59,7 +60,7 @@ namespace mt
             }
         }
         sf::Lock lock(m_protectionlock);
-        m_audioposition -= m_updateclock.restart();
+        m_audioposition -= m_updateclock.restart() * getPitch();
         if (m_datasource && hasdata)
         {
             if (m_audioposition >= m_audiooffsetcorrection)

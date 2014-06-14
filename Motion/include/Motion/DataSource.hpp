@@ -51,6 +51,7 @@ namespace mt
         sf::Time m_filelength;
         sf::Vector2i m_videosize;
         int m_audiochannelcount;
+        float m_playbackspeed;
         AVFormatContext* m_formatcontext;
         AVCodecContext* m_videocontext;
         AVCodecContext* m_audiocontext;
@@ -98,6 +99,8 @@ namespace mt
         const sf::Time GetPlayingOffset();
         void SetPlayingOffset(sf::Time PlayingOffset);
         void Update();
+        const float GetPlaybackSpeed();
+        void SetPlaybackSpeed(float PlaybackSpeed);
     };
 }
 
