@@ -1,6 +1,7 @@
 #ifndef MOTION_AUDIOPLAYBACK_CPP
 #define MOTION_AUDIOPLAYBACK_CPP
 
+#include <Motion/AudioPlayback.h>
 #include <Motion/AudioPlayback.hpp>
 
 namespace mt
@@ -139,6 +140,29 @@ namespace mt
     {
         setVolume(Volume);
     }
+}
+
+mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime AudioOffsetCorrection)
+{
+    mtAudioPlayback* audioplayback = new mtAudioPlayback();
+    audioplayback->Value = new mt::AudioPlayback(*DataSource->Value, sf::microseconds(AudioOffsetCorrection.microseconds));
+    return audioplayback;
+}
+
+void mtAudioPlayback_Destroy(mtAudioPlayback* AudioPlayback)
+{
+    delete AudioPlayback->Value;
+    delete AudioPlayback;
+}
+
+float mtAudioPlayback_GetVolume(mtAudioPlayback* AudioPlayback)
+{
+    return AudioPlayback->Value->GetVolume();
+}
+
+void mtAudioPlayback_SetVolume(mtAudioPlayback* AudioPlayback, float Volume)
+{
+    AudioPlayback->Value->SetVolume(Volume);
 }
 
 #endif

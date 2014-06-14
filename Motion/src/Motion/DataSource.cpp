@@ -4,8 +4,6 @@
 #include <Motion/DataSource.h>
 #include <Motion/DataSource.hpp>
 
-#include <Motion/DataSourceStruct.h>
-
 #define MAX_AUDIO_SAMPLES 192000
 #define PACKET_QUEUE_AMOUNT 5
 
@@ -598,6 +596,71 @@ sfBool mtDataSource_HasVideo(mtDataSource* DataSource)
 sfBool mtDataSource_HasAudio(mtDataSource* DataSource)
 {
     return DataSource->Value->HasAudio();
+}
+
+sfVector2i mtDataSource_GetVideoSize(mtDataSource* DataSource)
+{
+    sf::Vector2i size = DataSource->Value->GetVideoSize();
+    sfVector2i retval;
+    retval.x = size.x;
+    retval.y = size.y;
+    return retval;
+}
+
+mtState mtDataSource_GetState(mtDataSource* DataSource)
+{
+    return static_cast<mtState>(DataSource->Value->GetState());
+}
+
+sfTime mtDataSource_GetVideoFrameTime(mtDataSource* DataSource)
+{
+    sfTime retval;
+    retval.microseconds = DataSource->Value->GetVideoFrameTime().asMicroseconds();
+    return retval;
+}
+
+int mtDataSource_GetAudioChannelCount(mtDataSource* DataSource)
+{
+    return DataSource->Value->GetAudioChannelCount();
+}
+
+int mtDataSource_GetAudioSampleRate(mtDataSource* DataSource)
+{
+    return DataSource->Value->GetAudioSampleRate();
+}
+
+sfTime mtDataSource_GetFileLength(mtDataSource* DataSource)
+{
+    sfTime retval;
+    retval.microseconds = DataSource->Value->GetFileLength().asMicroseconds();
+    return retval;
+}
+
+sfTime mtDataSource_GetPlayingOffset(mtDataSource* DataSource)
+{
+    sfTime retval;
+    retval.microseconds = DataSource->Value->GetPlayingOffset().asMicroseconds();
+    return retval;
+}
+
+void mtDataSource_SetPlayingOffset(mtDataSource* DataSource, sfTime PlayingOffset)
+{
+    DataSource->Value->SetPlayingOffset(sf::microseconds(PlayingOffset.microseconds));
+}
+
+void mtDataSource_Update(mtDataSource* DataSource)
+{
+    DataSource->Value->Update();
+}
+
+float mtDataSource_GetPlaybackSpeed(mtDataSource* DataSource)
+{
+    return DataSource->Value->GetPlaybackSpeed();
+}
+
+void mtDataSource_SetPlaybackSpeed(mtDataSource* DataSource, float PlaybackSpeed)
+{
+    DataSource->Value->SetPlaybackSpeed(PlaybackSpeed);
 }
 
 #endif

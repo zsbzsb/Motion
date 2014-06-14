@@ -4,8 +4,9 @@
 // CSFML Types
 typedef struct sfRenderTexture sfRenderTexture;
 typedef struct sfRenderWindow sfRenderWindow;
-typedef struct sfTexture sfTexture;
 typedef struct sfView sfView;
+typedef struct sfShader sfShader;
+typedef struct sfTexture sfTexture;
 typedef int sfBool;
 #define sfFalse 0
 #define sfTrue  1

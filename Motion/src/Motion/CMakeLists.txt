@@ -34,21 +34,21 @@ set(SRC
     ${INCROOT}/Export.h
     ${INCROOT}/priv/AudioPacket.hpp
     ${SRCROOT}/AudioPacket.cpp
+    ${INCROOT}/AudioPlayback.h
     ${INCROOT}/AudioPlayback.hpp
     ${SRCROOT}/AudioPlayback.cpp
     ${INCROOT}/DataSource.h
     ${INCROOT}/DataSource.hpp
     ${SRCROOT}/DataSource.cpp
-    ${SRCROOT}/DataSourceStruct.h
-    ${SRCROOT}/RenderTextureStruct.h
-    ${SRCROOT}/RenderWindowStruct.h
+    ${SRCROOT}/MotionStructs.h
     ${INCROOT}/State.hpp
     ${INCROOT}/priv/VideoPacket.hpp
     ${SRCROOT}/VideoPacket.cpp
+    ${INCROOT}/VideoPlayback.h
     ${INCROOT}/VideoPlayback.hpp
     ${SRCROOT}/VideoPlayback.cpp
-    ${SRCROOT}/ViewStruct.h
     ${INCROOT}/Types.h
+    ${SRCROOT}/CSFMLStructs.h
 )
 
 # define the motion target

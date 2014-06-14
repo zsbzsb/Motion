@@ -1,5 +1,5 @@
-#ifndef MT_STATE_HPP
-#define MT_STATE_HPP
+#ifndef MOTION_STATE_HPP
+#define MOTION_STATE_HPP
 
 namespace mt
 {

@@ -1,6 +1,7 @@
 #ifndef MOTION_VIDEOPLAYBACK_CPP
 #define MOTION_VIDEOPLAYBACK_CPP
 
+#include <Motion/VideoPlayback.h>
 #include <Motion/VideoPlayback.hpp>
 
 namespace mt
@@ -118,6 +119,45 @@ namespace mt
         m_buffercolor = BufferColor;
         if (m_datasource && m_datasource->GetState() == State::Stopped) SetInitialBuffer();
     }
+}
+
+mtVideoPlayback* mtVideoPlayback_Create(mtDataSource* DataSource, sfColor BufferColor)
+{
+    mtVideoPlayback* videoplayback = new mtVideoPlayback();
+    videoplayback->Value = new mt::VideoPlayback(*DataSource->Value, sf::Color(BufferColor.r, BufferColor.g, BufferColor.b, BufferColor.a));
+    return videoplayback;
+}
+
+void mtVideoPlayback_Destroy(mtVideoPlayback* VideoPlayback)
+{
+    delete VideoPlayback->Value;
+    delete VideoPlayback;
+}
+
+sfColor mtVideoPlayback_GetBufferColor(mtVideoPlayback* VideoPlayback)
+{
+    sf::Color color = VideoPlayback->Value->GetBufferColor();
+    sfColor retval;
+    retval.r = color.r;
+    retval.g = color.g;
+    retval.b = color.b;
+    retval.a = color.a;
+    return retval;
+}
+
+void mtVideoPlayback_SetBufferColor(mtVideoPlayback* VideoPlayback, sfColor BufferColor)
+{
+    VideoPlayback->Value->SetBufferColor(sf::Color(BufferColor.r, BufferColor.g, BufferColor.b, BufferColor.a));
+}
+
+void mtVideoPlayback_DrawRenderWindow(mtVideoPlayback* VideoPlayback, sfRenderWindow* RenderWindow, sfRenderStates* RenderStates)
+{
+    RenderWindow->This.draw(*VideoPlayback->Value, convertRenderStates(RenderStates));
+}
+
+void mtVideoPlayback_DrawRenderTexture(mtVideoPlayback* VideoPlayback, sfRenderTexture* RenderTexture, sfRenderStates* RenderStates)
+{
+    RenderTexture->This.draw(*VideoPlayback->Value, convertRenderStates(RenderStates));
 }
 
 #endif
