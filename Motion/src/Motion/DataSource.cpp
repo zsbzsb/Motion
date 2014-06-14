@@ -358,7 +358,7 @@ namespace mt
     {
         sf::Time deltatime = m_updateclock.restart() * m_playbackspeed;
         sf::Lock lock(m_playbacklock);
-        m_playingoffset += deltatime;
+        if (m_state == State::Playing) m_playingoffset += deltatime;
         for (auto& videoplayback : m_videoplaybacks)
         {
             videoplayback->Update(deltatime);
