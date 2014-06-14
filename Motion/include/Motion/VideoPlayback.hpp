@@ -48,6 +48,8 @@ namespace mt
     public:
         VideoPlayback(DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);
         ~VideoPlayback();
+        const sf::Color GetBufferColor();
+        void SetBufferColor(sf::Color BufferColor);
 
     protected:
         void draw(sf::RenderTarget& target, sf::RenderStates states) const;

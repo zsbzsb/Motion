@@ -107,6 +107,17 @@ namespace mt
             }
         }
     }
+
+    const sf::Color VideoPlayback::GetBufferColor()
+    {
+        return m_buffercolor;
+    }
+
+    void VideoPlayback::SetBufferColor(sf::Color BufferColor)
+    {
+        m_buffercolor = BufferColor;
+        if (m_datasource && m_datasource->GetState() == State::Stopped) SetInitialBuffer();
+    }
 }
 
 #endif
