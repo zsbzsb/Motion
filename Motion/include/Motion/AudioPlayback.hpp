@@ -13,6 +13,7 @@
 #include <SFML/System/Time.hpp>
 #include <SFML/System/Mutex.hpp>
 #include <SFML/System/Lock.hpp>
+#include <SFML/System/Clock.hpp>
 #include <SFML/Audio/SoundStream.hpp>
 
 #include <Motion/Export.h>
@@ -33,6 +34,7 @@ namespace mt
         int m_channelcount;
         sf::Time m_audioposition;
         sf::Time m_audiooffsetcorrection;
+        sf::Clock m_updateclock;
         DataSource* m_datasource;
         sf::Mutex m_protectionlock;
         std::queue<priv::AudioPacketPtr> m_queuedaudiopackets;
@@ -44,7 +46,6 @@ namespace mt
     public:
         AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection = sf::milliseconds(300));
         ~AudioPlayback();
-        void Update(sf::Time DeltaTime);
     };
 }
 

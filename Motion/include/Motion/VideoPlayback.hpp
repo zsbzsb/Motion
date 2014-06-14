@@ -7,6 +7,8 @@
 
 #include <SFML/System/NonCopyable.hpp>
 #include <SFML/System/Time.hpp>
+#include <SFML/System/Mutex.hpp>
+#include <SFML/System/Lock.hpp>
 #include <SFML/Graphics/Drawable.hpp>
 #include <SFML/Graphics/Transformable.hpp>
 #include <SFML/Graphics/Texture.hpp>
@@ -33,6 +35,7 @@ namespace mt
         sf::Sprite m_videosprite;
         sf::Color m_buffercolor;
         DataSource* m_datasource;
+        sf::Mutex m_protectionlock;
         std::queue<priv::VideoPacketPtr> m_queuedvideopackets;
         sf::Time m_elapsedtime;
         sf::Time m_frametime;
@@ -40,11 +43,11 @@ namespace mt
 
         void SetInitialBuffer();
         void StateChanged(State PreviousState, State NewState);
+        void Update(sf::Time DeltaTime);
 
     public:
         VideoPlayback(DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);
         ~VideoPlayback();
-        void Update(sf::Time DeltaTime);
 
     protected:
         void draw(sf::RenderTarget& target, sf::RenderStates states) const;

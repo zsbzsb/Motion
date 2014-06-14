@@ -10,6 +10,7 @@ namespace mt
         m_channelcount(DataSource.GetAudioChannelCount()),
         m_audioposition(),
         m_audiooffsetcorrection(AudioOffsetCorrection),
+        m_updateclock(),
         m_datasource(&DataSource),
         m_protectionlock(),
         m_queuedaudiopackets(),
@@ -17,9 +18,10 @@ namespace mt
     {
         if (m_datasource->HasAudio())
         {
-            m_datasource->m_audioplaybacks.push_back(this);
             initialize(m_channelcount, m_datasource->GetAudioSampleRate());
             StateChanged(m_datasource->GetState(), m_datasource->GetState());
+            sf::Lock lock(m_datasource->m_playbacklock);
+            m_datasource->m_audioplaybacks.push_back(this);
         }
     }
 
@@ -57,6 +59,7 @@ namespace mt
             }
         }
         sf::Lock lock(m_protectionlock);
+        m_audioposition -= m_updateclock.restart();
         if (m_datasource && hasdata)
         {
             if (m_audioposition >= m_audiooffsetcorrection)
@@ -102,17 +105,13 @@ namespace mt
         // nothing to do
     }
 
-    void AudioPlayback::Update(sf::Time DeltaTime)
-    {
-        sf::Lock lock(m_protectionlock);
-        m_audioposition -= DeltaTime;
-    }
-
     void AudioPlayback::StateChanged(State PreviousState, State NewState)
     {
         if (NewState == State::Playing)
         {
             play();
+            sf::Lock lock(m_protectionlock);
+            m_updateclock.restart();
         }
         else if (NewState == State::Paused)
         {
@@ -121,6 +120,8 @@ namespace mt
         else if (NewState == State::Stopped)
         {
             stop();
+            sf::Lock lock(m_protectionlock);
+            m_audioposition = sf::Time::Zero;
             while (m_queuedaudiopackets.size() > 0)
             {
                 m_queuedaudiopackets.pop();

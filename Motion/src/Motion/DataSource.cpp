@@ -34,18 +34,18 @@ namespace mt
         m_decodethread(nullptr),
         m_shouldthreadrun(false),
         m_playingtoeof(false),
-        m_decodedqueuelock(),
-        m_decodedvideopackets(),
-        m_decodedaudiopackets(),
+        m_updateclock(),
+        m_playbacklock(),
         m_videoplaybacks(),
-        m_audioplaybacks(),
-        m_isstarving(true)
+        m_audioplaybacks()
     {
         av_register_all();
     }
 
     DataSource::~DataSource()
     {
+        Cleanup();
+        sf::Lock lock(m_playbacklock);
         while (m_videoplaybacks.size() > 0)
         {
             m_videoplaybacks.back()->m_datasource = nullptr;
@@ -57,7 +57,6 @@ namespace mt
             m_audioplaybacks.back()->stop();
             m_audioplaybacks.pop_back();
         }
-        Cleanup();
     }
 
     void DataSource::Cleanup()
@@ -276,6 +275,7 @@ namespace mt
             {
                 m_playingtoeof = false;
             }
+            m_updateclock.restart();
             NotifyStateChanged(State::Playing);
             m_state = State::Playing;
         }
@@ -297,22 +297,12 @@ namespace mt
             NotifyStateChanged(State::Stopped);
             m_state = State::Stopped;
             m_playingtoeof = false;
-            {
-                sf::Lock lock(m_decodedqueuelock);
-                while (m_decodedvideopackets.size() > 0)
-                {
-                    m_decodedvideopackets.pop();
-                }
-                while (m_decodedaudiopackets.size() > 0)
-                {
-                    m_decodedaudiopackets.pop();
-                }
-            }
         }
     }
 
     void DataSource::NotifyStateChanged(State NewState)
     {
+        sf::Lock lock(m_playbacklock);
         for (auto& videoplayback : m_videoplaybacks)
         {
             videoplayback->StateChanged(m_state, NewState);
@@ -325,75 +315,11 @@ namespace mt
 
     void DataSource::Update()
     {
-        sf::Lock lock(m_decodedqueuelock);
-        m_isstarving = false;
-        if (HasVideo())
+        sf::Time deltatime = m_updateclock.restart();
+        sf::Lock lock(m_playbacklock);
+        for (auto& videoplayback : m_videoplaybacks)
         {
-            while (m_decodedvideopackets.size() > 0)
-            {
-                bool filled = false;
-                for (auto& videoplayback : m_videoplaybacks)
-                {
-                    videoplayback->m_queuedvideopackets.push(m_decodedvideopackets.front());
-                    if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
-                    {
-                        m_isstarving = true;
-                        filled = false;
-                    }
-                    else if (!filled)
-                    {
-                        filled = true;
-                    }
-                }
-                m_decodedvideopackets.pop();
-                if (filled) break;
-            }
-            if (!m_isstarving)
-            {
-                for (auto& videoplayback : m_videoplaybacks)
-                {
-                    if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
-                    {
-                        m_isstarving = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (HasAudio())
-        {
-            while (m_decodedaudiopackets.size() > 0)
-            {
-                bool filled = false;
-                for (auto& audioplayback : m_audioplaybacks)
-                {
-                    sf::Lock audioplaybacklock(audioplayback->m_protectionlock);
-                    audioplayback->m_queuedaudiopackets.push(m_decodedaudiopackets.front());
-                    if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
-                    {
-                        m_isstarving = true;
-                        filled = false;
-                    }
-                    else if (!filled)
-                    {
-                        filled = true;
-                    }
-                }
-                m_decodedaudiopackets.pop();
-                if (filled) break;
-            }
-            if (!m_isstarving)
-            {
-                for (auto& audioplayback : m_audioplaybacks)
-                {
-                    sf::Lock audioplaybacklock(audioplayback->m_protectionlock);
-                    if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
-                    {
-                        m_isstarving = true;
-                        break;
-                    }
-                }
-            }
+            videoplayback->Update(deltatime);
         }
     }
 
@@ -418,10 +344,33 @@ namespace mt
         {
             bool notfilled = false;
             {
-                sf::Lock lock(m_decodedqueuelock);
-                notfilled = (HasVideo() && m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT) || (HasAudio() && m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT);
+                sf::Lock lock(m_playbacklock);
+                if (HasVideo())
+                {
+                    for (auto& videoplayback : m_videoplaybacks)
+                    {
+                        sf::Lock playbacklock(videoplayback->m_protectionlock);
+                        if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
+                        {
+                            notfilled = true;
+                            break;
+                        }
+                    }
+                }
+                if (!notfilled && HasAudio())
+                {
+                    for (auto& audioplayback : m_audioplaybacks)
+                    {
+                        sf::Lock playbacklock(audioplayback->m_protectionlock);
+                        if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
+                        {
+                            notfilled = true;
+                            break;
+                        }
+                    }
+                }
             }
-            while (m_isstarving && !m_playingtoeof && notfilled && m_shouldthreadrun)
+            while (!m_playingtoeof && notfilled && m_shouldthreadrun)
             {
                 bool validpacket = false;
                 while (!validpacket && m_shouldthreadrun)
@@ -441,9 +390,29 @@ namespace mt
                                     sws_scale(m_videoswcontext, m_videorawframe->data, m_videorawframe->linesize, 0, m_videocontext->height, m_videorgbaframe->data, m_videorgbaframe->linesize);
                                     validpacket = true;
                                     priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videorgbaframe->data[0], m_videosize.x, m_videosize.y));
-                                    sf::Lock lock(m_decodedqueuelock);
-                                    m_decodedvideopackets.push(packet);
-                                    notfilled = (HasVideo() && m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT) || (HasAudio() && m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT);
+                                    notfilled = false;
+                                    sf::Lock lock(m_playbacklock);
+                                    for (auto& videoplayback : m_videoplaybacks)
+                                    {
+                                        sf::Lock playbacklock(videoplayback->m_protectionlock);
+                                        videoplayback->m_queuedvideopackets.push(packet);
+                                        if (!notfilled && videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
+                                        {
+                                            notfilled = true;
+                                        }
+                                    }
+                                    if (!notfilled && HasAudio())
+                                    {
+                                        for (auto& audioplayback : m_audioplaybacks)
+                                        {
+                                            sf::Lock playbacklock(audioplayback->m_protectionlock);
+                                            if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
+                                            {
+                                                notfilled = true;
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -459,9 +428,29 @@ namespace mt
                                     {
                                         validpacket = true;
                                         priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audiopcmbuffer, convertlength, m_audiochannelcount));
-                                        sf::Lock lock(m_decodedqueuelock);
-                                        m_decodedaudiopackets.push(packet);
-                                        notfilled = (HasVideo() && m_decodedvideopackets.size() < PACKET_QUEUE_AMOUNT) || (HasAudio() && m_decodedaudiopackets.size() < PACKET_QUEUE_AMOUNT);
+                                        notfilled = false;
+                                        sf::Lock lock(m_playbacklock);
+                                        for (auto& audioplayback : m_audioplaybacks)
+                                        {
+                                            sf::Lock playbacklock(audioplayback->m_protectionlock);
+                                            audioplayback->m_queuedaudiopackets.push(packet);
+                                            if (!notfilled && audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
+                                            {
+                                                notfilled = true;
+                                            }
+                                        }
+                                        if (!notfilled && HasVideo())
+                                        {
+                                            for (auto& videoplayback : m_videoplaybacks)
+                                            {
+                                                sf::Lock playbacklock(videoplayback->m_protectionlock);
+                                                if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
+                                                {
+                                                    notfilled = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

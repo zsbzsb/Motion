@@ -10,6 +10,7 @@ namespace mt
         m_videosprite(),
         m_buffercolor(BufferColor),
         m_datasource(&DataSource),
+        m_protectionlock(),
         m_queuedvideopackets(),
         m_elapsedtime(),
         m_frametime(DataSource.GetVideoFrameTime()),
@@ -17,10 +18,11 @@ namespace mt
     {
         if (m_datasource->HasVideo())
         {
-            m_datasource->m_videoplaybacks.push_back(this);
             m_videotexture.create(m_datasource->GetVideoSize().x, m_datasource->GetVideoSize().y);
             m_videosprite.setTexture(m_videotexture);
             SetInitialBuffer();
+            sf::Lock lock(m_datasource->m_playbacklock);
+            m_datasource->m_videoplaybacks.push_back(this);
         }
     }
 
@@ -65,6 +67,7 @@ namespace mt
                 m_elapsedtime -= m_frametime * static_cast<float>(jumpcount);
                 m_framejump += jumpcount;
             }
+            sf::Lock lock(m_protectionlock);
             while (m_queuedvideopackets.size() > 0)
             {
                 if (m_framejump > 1)
@@ -96,11 +99,12 @@ namespace mt
         else if (NewState == State::Stopped)
         {
             m_framejump = 0;
+            SetInitialBuffer();
+            sf::Lock lock(m_protectionlock);
             while (m_queuedvideopackets.size() > 0)
             {
                 m_queuedvideopackets.pop();
             }
-            SetInitialBuffer();
         }
     }
 }

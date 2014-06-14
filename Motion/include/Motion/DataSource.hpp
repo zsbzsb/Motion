@@ -15,6 +15,7 @@
 #include <SFML/System/Lock.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/System/Time.hpp>
+#include <SFML/System/Clock.hpp>
 
 #include <Motion/Export.h>
 #include <Motion/priv/AudioPacket.hpp>
@@ -65,12 +66,10 @@ namespace mt
         std::unique_ptr<std::thread> m_decodethread;
         std::atomic<bool> m_shouldthreadrun;
         std::atomic<bool> m_playingtoeof;
-        sf::Mutex m_decodedqueuelock;
-        std::queue<priv::VideoPacketPtr> m_decodedvideopackets;
-        std::queue<priv::AudioPacketPtr> m_decodedaudiopackets;
+        sf::Clock m_updateclock;
+        sf::Mutex m_playbacklock;
         std::vector<mt::VideoPlayback*> m_videoplaybacks;
         std::vector<mt::AudioPlayback*> m_audioplaybacks;
-        std::atomic<bool> m_isstarving;
 
         AVFrame* CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
         void DestroyPictureFrame(AVFrame*& PictureFrame, unsigned char*& PictureBuffer);
