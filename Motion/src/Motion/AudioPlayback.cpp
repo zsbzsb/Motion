@@ -128,6 +128,16 @@ namespace mt
             }
         }
     }
+
+    const float AudioPlayback::GetVolume()
+    {
+        return getVolume();
+    }
+
+    void AudioPlayback::SetVolume(float Volume)
+    {
+        setVolume(Volume);
+    }
 }
 
 #endif

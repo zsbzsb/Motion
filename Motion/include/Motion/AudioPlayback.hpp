@@ -46,6 +46,8 @@ namespace mt
     public:
         AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection = sf::milliseconds(300));
         ~AudioPlayback();
+        const float GetVolume();
+        void SetVolume(float Volume);
     };
 }
 
