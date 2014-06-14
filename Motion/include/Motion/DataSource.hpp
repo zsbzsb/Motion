@@ -46,7 +46,9 @@ namespace mt
     private:
         int m_videostreamid;
         int m_audiostreamid;
-        int64_t m_videolength;
+        sf::Clock m_updateclock;
+        sf::Time m_playingoffset;
+        sf::Time m_filelength;
         sf::Vector2i m_videosize;
         int m_audiochannelcount;
         AVFormatContext* m_formatcontext;
@@ -66,7 +68,6 @@ namespace mt
         std::unique_ptr<std::thread> m_decodethread;
         std::atomic<bool> m_shouldthreadrun;
         std::atomic<bool> m_playingtoeof;
-        sf::Clock m_updateclock;
         sf::Mutex m_playbacklock;
         std::vector<mt::VideoPlayback*> m_videoplaybacks;
         std::vector<mt::AudioPlayback*> m_audioplaybacks;
@@ -93,6 +94,9 @@ namespace mt
         const sf::Time GetVideoFrameTime();
         const int GetAudioChannelCount();
         const int GetAudioSampleRate();
+        const sf::Time GetFileLength();
+        const sf::Time GetPlayingOffset();
+        void SetPlayingOffset(sf::Time PlayingOffset);
         void Update();
     };
 }

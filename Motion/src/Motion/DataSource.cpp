@@ -14,7 +14,9 @@ namespace mt
     DataSource::DataSource() :
         m_videostreamid(-1),
         m_audiostreamid(-1),
-        m_videolength(-1),
+        m_updateclock(),
+        m_playingoffset(),
+        m_filelength(sf::seconds(-1)),
         m_videosize(-1, -1),
         m_audiochannelcount(-1),
         m_formatcontext(nullptr),
@@ -34,7 +36,6 @@ namespace mt
         m_decodethread(nullptr),
         m_shouldthreadrun(false),
         m_playingtoeof(false),
-        m_updateclock(),
         m_playbacklock(),
         m_videoplaybacks(),
         m_audioplaybacks()
@@ -65,7 +66,8 @@ namespace mt
         Stop();
         m_videostreamid = -1;
         m_audiostreamid = -1;
-        m_videolength = -1;
+        m_playingoffset = sf::Time::Zero;
+        m_filelength = sf::seconds(-1);
         m_videosize = { -1, -1 };
         m_audiochannelcount = -1;
         if (m_videocontext)
@@ -201,7 +203,7 @@ namespace mt
                 }
             }
         }
-        if (m_formatcontext->duration != AV_NOPTS_VALUE) m_videolength = m_formatcontext->duration;
+        if (m_formatcontext->duration != AV_NOPTS_VALUE) m_filelength = sf::milliseconds(static_cast<int>(m_formatcontext->duration) / 1000);
         if (HasVideo() || HasAudio())
         {
             StartDecodeThread();
@@ -297,7 +299,45 @@ namespace mt
             NotifyStateChanged(State::Stopped);
             m_state = State::Stopped;
             m_playingtoeof = false;
+            SetPlayingOffset(sf::Time::Zero);
         }
+    }
+
+    const sf::Time DataSource::GetFileLength()
+    {
+        return m_filelength;
+    }
+
+    const sf::Time DataSource::GetPlayingOffset()
+    {
+        return m_playingoffset;
+    }
+
+    void DataSource::SetPlayingOffset(sf::Time PlayingOffset)
+    {
+        m_playingoffset = PlayingOffset;
+        bool startplaying = m_state == State::Playing;
+        if (m_state != State::Stopped)
+        {
+            NotifyStateChanged(State::Stopped);
+            m_state = State::Stopped;
+            m_playingtoeof = false;
+        }
+        if (HasVideo())
+        {
+            AVRational timebase = m_formatcontext->streams[m_videostreamid]->time_base;
+            float ftb = (float)timebase.den / (float)timebase.num;
+            int64_t pos = (int64_t)(PlayingOffset.asSeconds() * ftb);
+            av_seek_frame(m_formatcontext, m_videostreamid, pos, AVSEEK_FLAG_ANY);
+        }
+        if (HasAudio())
+        {
+            AVRational timebase = m_formatcontext->streams[m_audiostreamid]->time_base;
+            float ftb = (float)timebase.den / (float)timebase.num;
+            int64_t pos = (int64_t)(PlayingOffset.asSeconds() * ftb);
+            av_seek_frame(m_formatcontext, m_audiostreamid, pos, AVSEEK_FLAG_ANY);
+        }
+        if (startplaying) Play();
     }
 
     void DataSource::NotifyStateChanged(State NewState)
@@ -317,6 +357,7 @@ namespace mt
     {
         sf::Time deltatime = m_updateclock.restart();
         sf::Lock lock(m_playbacklock);
+        m_playingoffset += deltatime;
         for (auto& videoplayback : m_videoplaybacks)
         {
             videoplayback->Update(deltatime);
