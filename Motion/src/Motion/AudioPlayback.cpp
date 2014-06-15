@@ -64,7 +64,7 @@ namespace mt
         m_audioposition -= m_updateclock.restart() * getPitch();
         if (m_datasource && hasdata)
         {
-            if (m_audioposition >= m_offsetcorrection)
+            if (m_offsetcorrection != sf::Time::Zero && m_audioposition >= m_offsetcorrection)
             {
                 // add samples
                 std::size_t samplecount = static_cast<std::size_t>(std::floor(m_audioposition.asSeconds() * m_audioplayrate.asSeconds() * m_channelcount));
@@ -73,7 +73,7 @@ namespace mt
                 m_activepacket = std::make_shared<priv::AudioPacket>(&newsamples[0], samplecount / m_channelcount, m_channelcount);
                 m_audioposition -= sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
             }
-            else if (m_audioposition < -m_offsetcorrection)
+            else if (m_offsetcorrection != sf::Time::Zero && m_audioposition < -m_offsetcorrection)
             {
                 // skip samples
                 while (m_audioposition <= -m_offsetcorrection && m_queuedaudiopackets.size() > 1)
