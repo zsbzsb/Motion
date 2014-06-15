@@ -33,7 +33,7 @@ namespace mt
         sf::Time m_audioplayrate;
         int m_channelcount;
         sf::Time m_audioposition;
-        sf::Time m_audiooffsetcorrection;
+        sf::Time m_offsetcorrection;
         sf::Clock m_updateclock;
         DataSource* m_datasource;
         sf::Mutex m_protectionlock;
@@ -44,10 +44,12 @@ namespace mt
         void onSeek(sf::Time timeOffset);
         void StateChanged(State PreviousState, State NewState);
     public:
-        AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection = sf::milliseconds(300));
+        AudioPlayback(DataSource& DataSource, sf::Time OffsetCorrection = sf::milliseconds(300));
         ~AudioPlayback();
         const float GetVolume();
         void SetVolume(float Volume);
+        const sf::Time GetOffsetCorrection();
+        void SetOffsetCorrection(sf::Time OffsetCorrection);
     };
 }
 

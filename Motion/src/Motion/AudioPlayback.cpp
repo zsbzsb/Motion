@@ -10,7 +10,7 @@ namespace mt
         m_audioplayrate(sf::seconds(static_cast<float>(DataSource.GetAudioSampleRate()))),
         m_channelcount(DataSource.GetAudioChannelCount()),
         m_audioposition(),
-        m_audiooffsetcorrection(AudioOffsetCorrection),
+        m_offsetcorrection(AudioOffsetCorrection),
         m_updateclock(),
         m_datasource(&DataSource),
         m_protectionlock(),
@@ -64,7 +64,7 @@ namespace mt
         m_audioposition -= m_updateclock.restart() * getPitch();
         if (m_datasource && hasdata)
         {
-            if (m_audioposition >= m_audiooffsetcorrection)
+            if (m_audioposition >= m_offsetcorrection)
             {
                 // add samples
                 std::size_t samplecount = static_cast<std::size_t>(std::floor(m_audioposition.asSeconds() * m_audioplayrate.asSeconds() * m_channelcount));
@@ -73,10 +73,10 @@ namespace mt
                 m_activepacket = std::make_shared<priv::AudioPacket>(&newsamples[0], samplecount / m_channelcount, m_channelcount);
                 m_audioposition -= sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
             }
-            else if (m_audioposition < -m_audiooffsetcorrection)
+            else if (m_audioposition < -m_offsetcorrection)
             {
                 // skip samples
-                while (m_audioposition <= -m_audiooffsetcorrection && m_queuedaudiopackets.size() > 1)
+                while (m_audioposition <= -m_offsetcorrection && m_queuedaudiopackets.size() > 1)
                 {
                     m_audioposition += sf::seconds(m_queuedaudiopackets.front()->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
                     m_queuedaudiopackets.pop();
@@ -140,6 +140,18 @@ namespace mt
     {
         setVolume(Volume);
     }
+
+    const sf::Time AudioPlayback::GetOffsetCorrection()
+    {
+        sf::Lock lock(m_protectionlock);
+        return m_offsetcorrection;
+    }
+
+    void AudioPlayback::SetOffsetCorrection(sf::Time OffsetCorrection)
+    {
+        sf::Lock lock(m_protectionlock);
+        m_offsetcorrection = OffsetCorrection;
+    }
 }
 
 mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime AudioOffsetCorrection)
@@ -163,6 +175,18 @@ float mtAudioPlayback_GetVolume(mtAudioPlayback* AudioPlayback)
 void mtAudioPlayback_SetVolume(mtAudioPlayback* AudioPlayback, float Volume)
 {
     AudioPlayback->Value->SetVolume(Volume);
+}
+
+sfTime mtAudioPlayback_GetOffsetCorrection(mtAudioPlayback* AudioPlayback)
+{
+    sfTime retval;
+    retval.microseconds = AudioPlayback->Value->GetOffsetCorrection().asMicroseconds();
+    return retval;
+}
+
+void mtAudioPlayback_SetOffsetCorrection(mtAudioPlayback* AudioPlayback, sfTime OffsetCorrection)
+{
+    AudioPlayback->Value->SetOffsetCorrection(sf::microseconds(OffsetCorrection.microseconds));
 }
 
 #endif
