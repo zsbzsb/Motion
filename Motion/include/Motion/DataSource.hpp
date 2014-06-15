@@ -9,6 +9,7 @@
 #include <atomic>
 #include <queue>
 #include <vector>
+#include <iostream>
 
 #include <SFML/System/NonCopyable.hpp>
 #include <SFML/System/Mutex.hpp>

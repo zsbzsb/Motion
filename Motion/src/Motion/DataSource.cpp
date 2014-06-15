@@ -117,10 +117,12 @@ namespace mt
         Cleanup();
         if (avformat_open_input(&m_formatcontext, Filename.c_str(), nullptr, nullptr) != 0)
         {
+            std::cout << "Motion: Failed to open file: '" << Filename << "'" << std::endl;
             return false;
         }
         if (avformat_find_stream_info(m_formatcontext, nullptr) < 0)
         {
+            std::cout << "Motion: Failed to find stream information" << std::endl;
             return false;
         }
         for (unsigned int i = 0; i < m_formatcontext->nb_streams; i++)
@@ -140,20 +142,36 @@ namespace mt
         if (HasVideo())
         {
             m_videocontext = m_formatcontext->streams[m_videostreamid]->codec;
-            if (!m_videocontext) m_videostreamid = -1;
+            if (!m_videocontext)
+            {
+                std::cout << "Motion: Failed to get video codec context" << std::endl;
+                m_videostreamid = -1;
+            }
             else
             {
                 m_videocodec = avcodec_find_decoder(m_videocontext->codec_id);
-                if (!m_videocodec) m_videostreamid = -1;
+                if (!m_videocodec)
+                {
+                    std::cout << "Motion: Failed to find video codec" << std::endl;
+                    m_videostreamid = -1;
+                }
                 else
                 {
-                    if (avcodec_open2(m_videocontext, m_videocodec, nullptr) != 0) m_videostreamid = -1;
+                    if (avcodec_open2(m_videocontext, m_videocodec, nullptr) != 0)
+                    {
+                        std::cout << "Motion: Failed to load video codec" << std::endl;
+                        m_videostreamid = -1;
+                    }
                     else
                     {
                         m_videosize = { m_videocontext->width, m_videocontext->height };
                         m_videorawframe = CreatePictureFrame(m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, m_videorawbuffer);
                         m_videorgbaframe = CreatePictureFrame(PIX_FMT_RGBA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
-                        if (!m_videorawframe || !m_videorgbaframe) m_videostreamid = -1;
+                        if (!m_videorawframe || !m_videorgbaframe)
+                        {
+                            std::cout << "Motion: Failed to create video frames" << std::endl;
+                            m_videostreamid = -1;
+                        }
                         else
                         {
                             int swapmode = SWS_FAST_BILINEAR;
@@ -167,21 +185,41 @@ namespace mt
         if (HasAudio())
         {
             m_audiocontext = m_formatcontext->streams[m_audiostreamid]->codec;
-            if (!m_audiocontext) m_audiostreamid = -1;
+            if (!m_audiocontext)
+            {
+                std::cout << "Motion: Failed to get audio codec context" << std::endl;
+                m_audiostreamid = -1;
+            }
             else
             {
                 m_audiocodec = avcodec_find_decoder(m_audiocontext->codec_id);
-                if (!m_audiocodec) m_audiostreamid = -1;
+                if (!m_audiocodec)
+                {
+                    std::cout << "Motion: Failed to find audio codec" << std::endl;
+                    m_audiostreamid = -1;
+                }
                 else
                 {
-                    if (avcodec_open2(m_audiocontext, m_audiocodec, nullptr) != 0) m_audiostreamid = -1;
+                    if (avcodec_open2(m_audiocontext, m_audiocodec, nullptr) != 0)
+                    {
+                        std::cout << "Motion: Failed to load video codec" << std::endl;
+                        m_audiostreamid = -1;
+                    }
                     else
                     {
                         m_audiorawbuffer = avcodec_alloc_frame();
-                        if (!m_audiorawbuffer) m_audiostreamid = -1;
+                        if (!m_audiorawbuffer)
+                        {
+                            std::cout << "Motion: Failed to allocate audio buffer" << std::endl;
+                            m_audiostreamid = -1;
+                        }
                         else
                         {
-                            if (av_samples_alloc(&m_audiopcmbuffer, nullptr, m_audiocontext->channels, av_samples_get_buffer_size(nullptr, m_audiocontext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0) m_audiostreamid = -1;
+                            if (av_samples_alloc(&m_audiopcmbuffer, nullptr, m_audiocontext->channels, av_samples_get_buffer_size(nullptr, m_audiocontext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0)
+                            {
+                                std::cout << "Motion: Failed to create audio samples buffer" << std::endl;
+                                m_audiostreamid = -1;
+                            }
                             else
                             {
                                 avcodec_get_frame_defaults(m_audiorawbuffer);
@@ -212,6 +250,7 @@ namespace mt
         }
         else
         {
+            std::cout << "Motion: Failed to load audio or video" << std::endl;
             Cleanup();
             return false;
         }
