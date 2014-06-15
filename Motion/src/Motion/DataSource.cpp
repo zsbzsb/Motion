@@ -44,19 +44,21 @@ namespace mt
 
     DataSource::~DataSource()
     {
+        {
+            sf::Lock lock(m_playbacklock);
+            while (m_videoplaybacks.size() > 0)
+            {
+                m_videoplaybacks.back()->m_datasource = nullptr;
+                m_videoplaybacks.pop_back();
+            }
+            while (m_audioplaybacks.size() > 0)
+            {
+                m_audioplaybacks.back()->m_datasource = nullptr;
+                m_audioplaybacks.back()->stop();
+                m_audioplaybacks.pop_back();
+            }
+        }
         Cleanup();
-        sf::Lock lock(m_playbacklock);
-        while (m_videoplaybacks.size() > 0)
-        {
-            m_videoplaybacks.back()->m_datasource = nullptr;
-            m_videoplaybacks.pop_back();
-        }
-        while (m_audioplaybacks.size() > 0)
-        {
-            m_audioplaybacks.back()->m_datasource = nullptr;
-            m_audioplaybacks.back()->stop();
-            m_audioplaybacks.pop_back();
-        }
     }
 
     void DataSource::Cleanup()
