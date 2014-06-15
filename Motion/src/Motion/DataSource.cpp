@@ -6,6 +6,7 @@
 
 #define MAX_AUDIO_SAMPLES 192000
 #define PACKET_QUEUE_AMOUNT 5
+#define MAX_PACKET_QUEUE_AMOUNT 25
 
 namespace mt
 {
@@ -496,6 +497,7 @@ namespace mt
                                     {
                                         sf::Lock playbacklock(videoplayback->m_protectionlock);
                                         videoplayback->m_queuedvideopackets.push(packet);
+                                        if (videoplayback->m_queuedvideopackets.size() > MAX_PACKET_QUEUE_AMOUNT) videoplayback->m_queuedvideopackets.pop();
                                         if (!notfilled && videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
                                         {
                                             notfilled = true;
@@ -534,6 +536,7 @@ namespace mt
                                         {
                                             sf::Lock playbacklock(audioplayback->m_protectionlock);
                                             audioplayback->m_queuedaudiopackets.push(packet);
+                                            if (audioplayback->m_queuedaudiopackets.size() > MAX_PACKET_QUEUE_AMOUNT) audioplayback->m_queuedaudiopackets.pop();
                                             if (!notfilled && audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
                                             {
                                                 notfilled = true;
