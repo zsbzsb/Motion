@@ -4,6 +4,10 @@ namespace MotionNET
 {
     internal static class Globals
     {
-        internal const string Motion_DLL = "Motion";
+        #if DEBUG
+            internal const string Motion_DLL = "Motion-d";
+        #else
+            internal const string Motion_DLL = "Motion";
+        #endif
     }
 }
