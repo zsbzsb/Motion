@@ -12,5 +12,7 @@ typedef int sfBool;
 #define sfTrue  1
 // Motion Types
 typedef struct mtDataSource mtDataSource;
+typedef struct mtAudioPlayback mtAudioPlayback;
+typedef struct mtVideoPlayback mtVideoPlayback;
 
 #endif
