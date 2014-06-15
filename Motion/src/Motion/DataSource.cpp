@@ -346,7 +346,7 @@ namespace mt
         {
             videoplayback->StateChanged(m_state, NewState);
         }
-        for (auto& audioplayback : m_videoplaybacks)
+        for (auto& audioplayback : m_audioplaybacks)
         {
             audioplayback->StateChanged(m_state, NewState);
         }
