@@ -154,10 +154,10 @@ namespace mt
     }
 }
 
-mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime AudioOffsetCorrection)
+mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime OffsetCorrection)
 {
     mtAudioPlayback* audioplayback = new mtAudioPlayback();
-    audioplayback->Value = new mt::AudioPlayback(*DataSource->Value, sf::microseconds(AudioOffsetCorrection.microseconds));
+    audioplayback->Value = new mt::AudioPlayback(*DataSource->Value, sf::microseconds(OffsetCorrection.microseconds));
     return audioplayback;
 }
 

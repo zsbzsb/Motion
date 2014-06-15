@@ -42,6 +42,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AudioPlayback.cs" />
     <Compile Include="DataSource.cs" />
     <Compile Include="Globals.cs" />
     <Compile Include="InternalBase.cs" />

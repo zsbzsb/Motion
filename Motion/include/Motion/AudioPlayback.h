@@ -6,7 +6,7 @@
 #include <Motion/Export.h>
 #include <Motion/Types.h>
 
-MOTION_C_API mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime AudioOffsetCorrection);
+MOTION_C_API mtAudioPlayback* mtAudioPlayback_Create(mtDataSource* DataSource, sfTime OffsetCorrection);
 MOTION_C_API void mtAudioPlayback_Destroy(mtAudioPlayback* AudioPlayback);
 MOTION_C_API float mtAudioPlayback_GetVolume(mtAudioPlayback* AudioPlayback);
 MOTION_C_API void mtAudioPlayback_SetVolume(mtAudioPlayback* AudioPlayback, float Volume);

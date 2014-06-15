@@ -44,7 +44,7 @@ namespace MotionNET
                 return GetVideoSize(_pointer);
             }
         }
-        public State CurrentState
+        public State State
         {
             get
             {
