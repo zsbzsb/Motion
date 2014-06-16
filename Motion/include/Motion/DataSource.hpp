@@ -69,6 +69,7 @@ namespace mt
         State m_state;
         std::unique_ptr<std::thread> m_decodethread;
         std::atomic<bool> m_shouldthreadrun;
+        std::atomic<bool> m_eofreached;
         std::atomic<bool> m_playingtoeof;
         sf::Mutex m_playbacklock;
         std::vector<mt::VideoPlayback*> m_videoplaybacks;
@@ -102,6 +103,7 @@ namespace mt
         void Update();
         const float GetPlaybackSpeed();
         void SetPlaybackSpeed(float PlaybackSpeed);
+        const bool IsEndofFileReached();
     };
 }
 

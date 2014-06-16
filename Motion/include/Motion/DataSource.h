@@ -32,5 +32,6 @@ MOTION_C_API void mtDataSource_SetPlayingOffset(mtDataSource* DataSource, sfTime
 MOTION_C_API void mtDataSource_Update(mtDataSource* DataSource);
 MOTION_C_API float mtDataSource_GetPlaybackSpeed(mtDataSource* DataSource);
 MOTION_C_API void mtDataSource_SetPlaybackSpeed(mtDataSource* DataSource, float PlaybackSpeed);
+MOTION_C_API sfBool mtDataSource_GetIsEndofFileReached(mtDataSource* DataSource);
 
 #endif

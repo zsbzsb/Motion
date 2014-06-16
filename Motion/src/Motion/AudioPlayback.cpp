@@ -48,17 +48,13 @@ namespace mt
     bool AudioPlayback::onGetData(Chunk& data)
     {
         bool hasdata = false;
+        while (!hasdata && m_datasource && !m_datasource->m_eofreached)
         {
-            sf::Lock lock(m_protectionlock);
-            hasdata = m_queuedaudiopackets.size() > 0;
-        }
-        while (!hasdata && m_datasource && !m_datasource->m_playingtoeof)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(3));
             {
                 sf::Lock lock(m_protectionlock);
                 hasdata = m_queuedaudiopackets.size() > 0;
             }
+            if(!hasdata) std::this_thread::sleep_for(std::chrono::milliseconds(3));
         }
         sf::Lock lock(m_protectionlock);
         m_audioposition -= m_updateclock.restart() * getPitch();

@@ -35,6 +35,7 @@ namespace mt
         m_state(State::Stopped),
         m_decodethread(nullptr),
         m_shouldthreadrun(false),
+        m_eofreached(false),
         m_playingtoeof(false),
         m_playbacklock(),
         m_videoplaybacks(),
@@ -314,10 +315,7 @@ namespace mt
     {
         if ((HasVideo() || HasAudio()) && m_state != State::Playing)
         {
-            if (m_state == State::Stopped)
-            {
-                m_playingtoeof = false;
-            }
+            m_eofreached = false;
             m_updateclock.restart();
             NotifyStateChanged(State::Playing);
             m_state = State::Playing;
@@ -337,9 +335,11 @@ namespace mt
     {
         if (m_state != State::Stopped)
         {
+            m_playingtoeof = false;
+            m_eofreached = true;
             NotifyStateChanged(State::Stopped);
             m_state = State::Stopped;
-            m_playingtoeof = false;
+            m_eofreached = false;
             SetPlayingOffset(sf::Time::Zero);
         }
     }
@@ -363,9 +363,10 @@ namespace mt
             bool startplaying = m_state == State::Playing;
             if (m_state != State::Stopped)
             {
+                m_eofreached = true;
                 NotifyStateChanged(State::Stopped);
                 m_state = State::Stopped;
-                m_playingtoeof = false;
+                m_eofreached = false;
             }
             if (HasVideo())
             {
@@ -403,16 +404,17 @@ namespace mt
 
     void DataSource::Update()
     {
-        sf::Time deltatime = m_updateclock.restart() * m_playbackspeed;
-        sf::Lock lock(m_playbacklock);
-        if (m_state == State::Playing) m_playingoffset += deltatime;
-        for (auto& videoplayback : m_videoplaybacks)
-        {
-            videoplayback->Update(deltatime);
-        }
         if (m_playingoffset > m_filelength)
         {
             Stop();
+            m_eofreached = true;
+        }
+        sf::Time deltatime = m_updateclock.restart() * m_playbackspeed;
+        if (m_state == State::Playing) m_playingoffset += deltatime;
+        sf::Lock lock(m_playbacklock);
+        for (auto& videoplayback : m_videoplaybacks)
+        {
+            videoplayback->Update(deltatime);
         }
     }
 
@@ -478,7 +480,7 @@ namespace mt
                     }
                 }
             }
-            while (!m_playingtoeof && notfilled && m_shouldthreadrun)
+            while (notfilled && m_shouldthreadrun && !m_playingtoeof)
             {
                 bool validpacket = false;
                 while (!validpacket && m_shouldthreadrun)
@@ -604,6 +606,11 @@ namespace mt
         PictureBuffer = nullptr;
         PictureFrame = nullptr;
     }
+
+    const bool DataSource::IsEndofFileReached()
+    {
+        return m_eofreached;
+    }
 }
 
 mtDataSource* mtDataSource_Create(void)
@@ -712,6 +719,11 @@ float mtDataSource_GetPlaybackSpeed(mtDataSource* DataSource)
 void mtDataSource_SetPlaybackSpeed(mtDataSource* DataSource, float PlaybackSpeed)
 {
     DataSource->Value->SetPlaybackSpeed(PlaybackSpeed);
+}
+
+sfBool mtDataSource_GetIsEndofFileReached(mtDataSource* DataSource)
+{
+    return DataSource->Value->IsEndofFileReached();
 }
 
 #endif
