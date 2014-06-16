@@ -9,6 +9,7 @@ namespace MotionNET
     {
         #region Variables
         private IntPtr _pointer = IntPtr.Zero;
+        private bool _eofeventraised = false;
         #endregion
 
         #region Properties
@@ -95,6 +96,7 @@ namespace MotionNET
             {
                 EnsureValid();
                 SetPlayingOffset(_pointer, value);
+                _eofeventraised = false;
             }
         }
         public float PlaybackSpeed
@@ -110,6 +112,18 @@ namespace MotionNET
                 SetPlaybackSpeed(_pointer, value);
             }
         }
+        public bool IsEndofFileReached
+        {
+            get
+            {
+                EnsureValid();
+                return GetIsEndofFileReached(_pointer);
+            }
+        }
+        #endregion
+
+        #region Events
+        public event Action<DataSource> EndofFileReached;
         #endregion
 
         #region Constructors
@@ -134,6 +148,7 @@ namespace MotionNET
         {
             EnsureValid();
             Play(_pointer);
+            _eofeventraised = false;
         }
         public void Pause()
         {
@@ -144,11 +159,17 @@ namespace MotionNET
         {
             EnsureValid();
             Stop(_pointer);
+            _eofeventraised = false;
         }
         public void Update()
         {
             EnsureValid();
             Update(_pointer);
+            if (IsEndofFileReached && !_eofeventraised)
+            {
+                if (EndofFileReached != null) EndofFileReached(this);
+                _eofeventraised = true;
+            }
         }
         #endregion
 
@@ -209,6 +230,9 @@ namespace MotionNET
 
         [DllImport(Globals.Motion_DLL, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mtDataSource_SetPlaybackSpeed"), SuppressUnmanagedCodeSecurity]
         private static extern void SetPlaybackSpeed(IntPtr Pointer, float PlaybackSpeed);
+
+        [DllImport(Globals.Motion_DLL, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mtDataSource_GetIsEndofFileReached"), SuppressUnmanagedCodeSecurity]
+        private static extern bool GetIsEndofFileReached(IntPtr Pointer);
         #endregion
     }
 }
