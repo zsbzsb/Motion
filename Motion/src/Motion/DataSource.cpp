@@ -13,6 +13,7 @@ namespace mt
     DataSource::DataSource() :
         m_videostreamid(-1),
         m_audiostreamid(-1),
+        m_subtitlestreamid(-1),
         m_updateclock(),
         m_playingoffset(),
         m_filelength(sf::seconds(-1)),
@@ -22,8 +23,10 @@ namespace mt
         m_formatcontext(nullptr),
         m_videocontext(nullptr),
         m_audiocontext(nullptr),
+        m_subtitlecontext(nullptr),
         m_videocodec(nullptr),
         m_audiocodec(nullptr),
+        m_subtitlecodec(nullptr),
         m_videorawframe(nullptr),
         m_videorgbaframe(nullptr),
         m_audiorawbuffer(nullptr),
@@ -69,6 +72,7 @@ namespace mt
         Stop();
         m_videostreamid = -1;
         m_audiostreamid = -1;
+        m_subtitlestreamid = -1;
         m_playingoffset = sf::Time::Zero;
         m_filelength = sf::seconds(-1);
         m_videosize = { -1, -1 };
@@ -85,6 +89,12 @@ namespace mt
             m_audiocontext = nullptr;
         }
         m_audiocodec = nullptr;
+        if (m_subtitlecontext)
+        {
+            avcodec_close(m_subtitlecontext);
+            m_subtitlecontext = nullptr;
+        }
+        m_subtitlecontext = nullptr;
         if (m_videorawframe) DestroyPictureFrame(m_videorawframe, m_videorawbuffer);
         if (m_videorgbaframe) DestroyPictureFrame(m_videorgbaframe, m_videorgbabuffer);
         if (m_audiorawbuffer)
@@ -114,7 +124,7 @@ namespace mt
         }
     }
 
-    bool DataSource::LoadFromFile(const std::string& Filename, bool EnableVideo, bool EnableAudio)
+    bool DataSource::LoadFromFile(const std::string& Filename, bool EnableVideo, bool EnableAudio, bool EnableSubtitles)
     {
         Cleanup();
         if (avformat_open_input(&m_formatcontext, Filename.c_str(), nullptr, nullptr) != 0)
@@ -132,10 +142,13 @@ namespace mt
             switch (m_formatcontext->streams[i]->codec->codec_type)
             {
                 case AVMEDIA_TYPE_VIDEO:
-                    if (m_videostreamid == -1 && EnableVideo) m_videostreamid = i;
+                    if (!HasVideo() && EnableVideo) m_videostreamid = i;
                     break;
                 case AVMEDIA_TYPE_AUDIO:
-                    if (m_audiostreamid == -1 && EnableAudio) m_audiostreamid = i;
+                    if (!HasAudio() && EnableAudio) m_audiostreamid = i;
+                    break;
+                case AVMEDIA_TYPE_SUBTITLE:
+                    if (!HasSubtitles() && EnableSubtitles) m_subtitlestreamid = i;
                     break;
                 default:
                     break;
@@ -244,15 +257,45 @@ namespace mt
                 }
             }
         }
+        if (HasSubtitles())
+        {
+            m_subtitlecontext = m_formatcontext->streams[m_subtitlestreamid]->codec;
+            if (!m_subtitlecontext)
+            {
+                std::cout << "Motion: Failed to get subtitle codec context" << std::endl;
+                m_subtitlestreamid = -1;
+            }
+            else
+            {
+                m_subtitlecodec = avcodec_find_decoder(m_subtitlecontext->codec_id);
+                if (!m_subtitlecodec)
+                {
+                    std::cout << "Motion: Failed to find subtitle codec" << std::endl;
+                    m_subtitlestreamid = -1;
+                }
+                else
+                {
+                    if (avcodec_open2(m_subtitlecontext, m_subtitlecodec, nullptr) != 0)
+                    {
+                        std::cout << "Motion: Failed to load subtitle codec" << std::endl;
+                        m_subtitlestreamid = -1;
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
+        }
         if (m_formatcontext->duration != AV_NOPTS_VALUE) m_filelength = sf::milliseconds(static_cast<int>(m_formatcontext->duration) / 1000);
-        if (HasVideo() || HasAudio())
+        if (HasVideo() || HasAudio() || HasSubtitles())
         {
             StartDecodeThread();
             return true;
         }
         else
         {
-            std::cout << "Motion: Failed to load audio or video" << std::endl;
+            std::cout << "Motion: Failed to load any valid streams" << std::endl;
             Cleanup();
             return false;
         }
@@ -266,6 +309,11 @@ namespace mt
     const bool DataSource::HasAudio()
     {
         return m_audiostreamid != -1;
+    }
+
+    const bool DataSource::HasSubtitles()
+    {
+        return m_subtitlestreamid != -1;
     }
 
     const sf::Vector2i DataSource::GetVideoSize()
@@ -566,6 +614,20 @@ namespace mt
                                     }
                                 }
                             }
+                        }
+                        else if (packet->stream_index == m_subtitlestreamid)
+                        {
+                            AVSubtitle* subtitle;
+                            subtitle = (AVSubtitle*)av_malloc(sizeof(*subtitle));
+                            int decoderesult = 0;
+                            if (avcodec_decode_subtitle2(m_subtitlecontext, subtitle, &decoderesult, packet) >= 0)
+                            {
+                                if (decoderesult)
+                                {
+
+                                }
+                            }
+                            avsubtitle_free(subtitle);
                         }
                         av_free_packet(packet);
                         av_free(packet);

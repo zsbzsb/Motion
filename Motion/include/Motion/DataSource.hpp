@@ -47,6 +47,7 @@ namespace mt
     private:
         int m_videostreamid;
         int m_audiostreamid;
+        int m_subtitlestreamid;
         sf::Clock m_updateclock;
         sf::Time m_playingoffset;
         sf::Time m_filelength;
@@ -56,8 +57,10 @@ namespace mt
         AVFormatContext* m_formatcontext;
         AVCodecContext* m_videocontext;
         AVCodecContext* m_audiocontext;
+        AVCodecContext* m_subtitlecontext;
         AVCodec* m_videocodec;
         AVCodec* m_audiocodec;
+        AVCodec* m_subtitlecodec;
         AVFrame* m_videorawframe;
         AVFrame* m_videorgbaframe;
         AVFrame* m_audiorawbuffer;
@@ -86,12 +89,13 @@ namespace mt
     public:
         DataSource();
         ~DataSource();
-        bool LoadFromFile(const std::string& Filename, bool EnableVideo = true, bool EnableAudio = true);
+        bool LoadFromFile(const std::string& Filename, bool EnableVideo = true, bool EnableAudio = true, bool EnableSubtitles = false);
         void Play();
         void Pause();
         void Stop();
         const bool HasVideo();
         const bool HasAudio();
+        const bool HasSubtitles();
         const sf::Vector2i GetVideoSize();
         const State GetState();
         const sf::Time GetVideoFrameTime();
