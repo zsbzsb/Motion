@@ -10,3 +10,9 @@ the files and then the data played back using SFML.
 Check the included example folders for a quick code example to get
 up and running. Remember MotionNET depends on Motion while the
 Motion project can be used independently of MotionNET.
+
+Dependencies
+SFML (latest master or 2.2+)
+FFMPEG
+Motion (only required for MotionNET)
+CSFML (included in source)
