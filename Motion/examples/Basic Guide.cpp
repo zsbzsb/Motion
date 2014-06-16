@@ -47,11 +47,11 @@ int main()
             else if (event.type == sf::Event::MouseButtonPressed)
             {
                 if (playbutton.getBounds().contains(window.mapPixelToCoords({ event.mouseButton.x, event.mouseButton.y })))
-                    datasource.Play(); // play button was pressed - so play the video
+                    datasource.Play(); // play button was pressed - so start the playback
                 else if (pausebutton.getBounds().contains(window.mapPixelToCoords({ event.mouseButton.x, event.mouseButton.y })))
-                    datasource.Pause(); // pause button was pressed
+                    datasource.Pause(); // pause button was pressed - so pause the playback
                 else if (stopbutton.getBounds().contains(window.mapPixelToCoords({ event.mouseButton.x, event.mouseButton.y })))
-                    datasource.Stop(); // stop button was pressed
+                    datasource.Stop(); // stop button was pressed - stop the playback
             }
         }
 
