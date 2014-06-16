@@ -40,6 +40,7 @@ set(SRC
     ${INCROOT}/DataSource.h
     ${INCROOT}/DataSource.hpp
     ${SRCROOT}/DataSource.cpp
+    ${INCROOT}/Motion.hpp
     ${SRCROOT}/MotionStructs.h
     ${INCROOT}/State.hpp
     ${INCROOT}/priv/VideoPacket.hpp
