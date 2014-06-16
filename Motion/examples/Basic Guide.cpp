@@ -27,7 +27,7 @@ int main()
     stopbutton.append({ { 355, 370 }, sf::Color::Red });
 
     mt::DataSource datasource; // create the data source from which playback will happen
-    if (!datasource.LoadFromFile("C:/Users/Zachariah Brown/test.mp4")) // load a file into the data source
+    if (!datasource.LoadFromFile("{video file path}")) // load a file into the data source
         return EXIT_FAILURE;
 
     mt::AudioPlayback audioplayback(datasource); // create an audio playback from our data source
