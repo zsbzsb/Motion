@@ -71,7 +71,7 @@ namespace mt
         m_audiostreamid = -1;
         m_playingoffset = sf::Time::Zero;
         m_filelength = sf::seconds(-1);
-        m_videosize = { -1, -1 };
+        m_videosize = sf::Vector2i(-1, -1);
         m_audiochannelcount = -1;
         if (m_videocontext)
         {
@@ -166,7 +166,7 @@ namespace mt
                     }
                     else
                     {
-                        m_videosize = { m_videocontext->width, m_videocontext->height };
+                        m_videosize = sf::Vector2i(m_videocontext->width, m_videocontext->height);
                         m_videorawframe = CreatePictureFrame(m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, m_videorawbuffer);
                         m_videorgbaframe = CreatePictureFrame(PIX_FMT_RGBA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
                         if (!m_videorawframe || !m_videorgbaframe)
