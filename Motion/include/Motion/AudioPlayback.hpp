@@ -7,7 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <vector>
-#include <cinttypes>
+#include <cstdint>
 
 #include <SFML/System/NonCopyable.hpp>
 #include <SFML/System/Time.hpp>

@@ -29,7 +29,7 @@
 #ifndef MOTION_SFMLSTRUCTS_H
 #define MOTION_SFMLSTRUCTS_H
 
-#include <cinttypes>
+#include <cstdint>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/RenderTexture.hpp>
