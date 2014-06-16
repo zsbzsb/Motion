@@ -167,8 +167,8 @@ namespace MotionNET
             Update(_pointer);
             if (IsEndofFileReached && !_eofeventraised)
             {
-                if (EndofFileReached != null) EndofFileReached(this);
                 _eofeventraised = true;
+                if (EndofFileReached != null) EndofFileReached(this);
             }
         }
         #endregion
