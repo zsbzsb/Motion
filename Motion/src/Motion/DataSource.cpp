@@ -356,29 +356,36 @@ namespace mt
 
     void DataSource::SetPlayingOffset(sf::Time PlayingOffset)
     {
-        m_playingoffset = PlayingOffset;
-        bool startplaying = m_state == State::Playing;
-        if (m_state != State::Stopped)
+        if (HasVideo() || HasAudio())
         {
-            NotifyStateChanged(State::Stopped);
-            m_state = State::Stopped;
-            m_playingtoeof = false;
+            StopDecodeThread();
+            m_playingoffset = PlayingOffset;
+            bool startplaying = m_state == State::Playing;
+            if (m_state != State::Stopped)
+            {
+                NotifyStateChanged(State::Stopped);
+                m_state = State::Stopped;
+                m_playingtoeof = false;
+            }
+            if (HasVideo())
+            {
+                AVRational timebase = m_formatcontext->streams[m_videostreamid]->time_base;
+                float ftb = (float)timebase.den / (float)timebase.num;
+                int64_t pos = static_cast<int64_t>(PlayingOffset.asSeconds() * ftb);
+                av_seek_frame(m_formatcontext, m_videostreamid, pos, AVSEEK_FLAG_ANY);
+                avcodec_flush_buffers(m_videocontext);
+            }
+            if (HasAudio())
+            {
+                AVRational timebase = m_formatcontext->streams[m_audiostreamid]->time_base;
+                float ftb = (float)timebase.den / (float)timebase.num;
+                int64_t pos = static_cast<int64_t>(PlayingOffset.asSeconds() * ftb);
+                av_seek_frame(m_formatcontext, m_audiostreamid, pos, AVSEEK_FLAG_ANY);
+                avcodec_flush_buffers(m_audiocontext);
+            }
+            StartDecodeThread();
+            if (startplaying) Play();
         }
-        if (HasVideo())
-        {
-            AVRational timebase = m_formatcontext->streams[m_videostreamid]->time_base;
-            float ftb = (float)timebase.den / (float)timebase.num;
-            int64_t pos = (int64_t)(PlayingOffset.asSeconds() * ftb);
-            av_seek_frame(m_formatcontext, m_videostreamid, pos, AVSEEK_FLAG_ANY);
-        }
-        if (HasAudio())
-        {
-            AVRational timebase = m_formatcontext->streams[m_audiostreamid]->time_base;
-            float ftb = (float)timebase.den / (float)timebase.num;
-            int64_t pos = (int64_t)(PlayingOffset.asSeconds() * ftb);
-            av_seek_frame(m_formatcontext, m_audiostreamid, pos, AVSEEK_FLAG_ANY);
-        }
-        if (startplaying) Play();
     }
 
     void DataSource::NotifyStateChanged(State NewState)
