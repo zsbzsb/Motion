@@ -43,7 +43,7 @@ namespace MotionNET_Example
             // scale video to fit the window
             videoplayback.Scale = new Vector2f(640f / (float)datasource.VideoSize.X, 480f / (float)datasource.VideoSize.Y);
 
-            // standard SFML.NET game and event handling
+            // standard SFML.NET game loop and event handling
             window.Closed += (sender, e) => { window.Close(); };
             window.MouseButtonPressed += (sender, e) =>
                 {
