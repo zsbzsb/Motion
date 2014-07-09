@@ -1,9 +1,4 @@
-﻿#if DEBUG
-#define ENSURE_VALID_OBJECT
-#endif
-#define EXCEPTIONS_TO_CONSOLE
-
-using System;
+﻿using System;
 
 namespace MotionNET
 {
