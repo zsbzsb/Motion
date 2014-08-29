@@ -39,7 +39,7 @@ namespace MotionNET
                 {
                     #if DEBUG // only rethrow the exception if we are in debug mode
                         throw e;
-                    #elif EXCEPTIONS_TO_CONSOLE // else notify in console
+                    #else
                         Console.WriteLine("Suppresed exception during Dispose() call - run in debug mode to throw the exception.");
                     #endif
                 }
@@ -50,9 +50,7 @@ namespace MotionNET
         protected virtual void Destroy() { }
         protected void EnsureValid()
         {
-            #if ENSURE_VALID_OBJECT
-                if (_disposed) throw new Exception("Attempt to access disposed object");
-            #endif
+            if (_disposed) throw new Exception("Attempt to access disposed object");
         }
         #endregion
     }
