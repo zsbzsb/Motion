@@ -109,7 +109,7 @@ namespace mt
         }
         if (m_formatcontext)
         {
-			avformat_close_input(&m_formatcontext);
+            avformat_close_input(&m_formatcontext);
             m_formatcontext = nullptr;
         }
     }
