@@ -11,8 +11,13 @@ Check the included example folders for a quick code example to get
 up and running. Remember MotionNET depends on Motion while the
 Motion project can be used independently of MotionNET.
 
+When using MotionNET ensure that SFML is compiled dynamically and
+CSFML is linked to the dynamic version of SFML. Also ensure that
+you do not link to static std libs. Failure to link everything
+dynamically will cause issues.
+
 Dependencies
 SFML (latest master or 2.2+)
 FFMPEG
 Motion (only required for MotionNET)
-CSFML (included in source)
+CSFML
