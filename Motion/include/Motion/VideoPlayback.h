@@ -12,5 +12,7 @@ MOTION_C_API sfColor mtVideoPlayback_GetBufferColor(mtVideoPlayback* VideoPlayba
 MOTION_C_API void mtVideoPlayback_SetBufferColor(mtVideoPlayback* VideoPlayback, sfColor BufferColor);
 MOTION_C_API void mtVideoPlayback_DrawRenderWindow(mtVideoPlayback* VideoPlayback, sfRenderWindow* RenderWindow, sfRenderStates* RenderStates);
 MOTION_C_API void mtVideoPlayback_DrawRenderTexture(mtVideoPlayback* VideoPlayback, sfRenderTexture* RenderTexture, sfRenderStates* RenderStates);
+MOTION_C_API void mtVideoPlayback_GetLastFrame(mtVideoPlayback* VideoPlayback, sfImage* Image);
+MOTION_C_API unsigned int mtVideoPlayback_GetPlayedFrameCount(mtVideoPlayback* VideoPlayback);
 
 #endif

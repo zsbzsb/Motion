@@ -27,6 +27,14 @@ namespace MotionNET
                 SetBufferColor(_pointer, value);
             }
         }
+        public uint PlayedFrameCount
+        {
+            get
+            {
+                _base.EnsureValid();
+                return GetPlayedFrameCount(_pointer);
+            }
+        }
         #endregion
 
         #region Constructors
@@ -63,6 +71,13 @@ namespace MotionNET
                 DrawRenderTexture(_pointer, ((RenderTexture)target).CPointer, ref marshaledstates);
             }
         }
+        public Image GetLastFrame()
+        {
+            _base.EnsureValid();
+            var image = new Image(0, 0);
+            GetLastFrame(_pointer, image.CPointer);
+            return image;
+        }
         #endregion
 
         #region Imports
@@ -83,6 +98,12 @@ namespace MotionNET
 
         [DllImport(Globals.Motion_DLL, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mtVideoPlayback_DrawRenderTexture"), SuppressUnmanagedCodeSecurity]
         private static extern void DrawRenderTexture(IntPtr Pointer, IntPtr RenderTexturePointer, ref RenderStatesMarshal RenderStates);
+
+        [DllImport(Globals.Motion_DLL, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mtVideoPlayback_GetLastFrame"), SuppressUnmanagedCodeSecurity]
+        private static extern void GetLastFrame(IntPtr Pointer, IntPtr ImagePointer);
+
+        [DllImport(Globals.Motion_DLL, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mtVideoPlayback_GetPlayedFrameCount"), SuppressUnmanagedCodeSecurity]
+        private static extern uint GetPlayedFrameCount(IntPtr Pointer);
         #endregion
     }
 

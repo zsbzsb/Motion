@@ -12,10 +12,12 @@ namespace mt
         m_buffercolor(BufferColor),
         m_datasource(&DataSource),
         m_protectionlock(),
+        m_texturelock(),
         m_queuedvideopackets(),
         m_elapsedtime(),
         m_frametime(DataSource.GetVideoFrameTime()),
-        m_framejump(0)
+        m_framejump(0),
+        m_playedframecount(0)
     {
         if (m_datasource->HasVideo())
         {
@@ -54,6 +56,7 @@ namespace mt
     void VideoPlayback::draw(sf::RenderTarget& target, sf::RenderStates states) const
     {
         states.transform *= getTransform();
+        sf::Lock texturelock(m_texturelock);
         target.draw(m_videosprite, states);
     }
 
@@ -74,12 +77,17 @@ namespace mt
                 if (m_framejump > 1)
                 {
                     m_framejump -= 1;
+                    m_playedframecount++;
                     m_queuedvideopackets.pop();
                 }
                 else if (m_framejump == 1)
                 {
                     m_framejump -= 1;
-                    m_videotexture.update(m_queuedvideopackets.front()->GetRGBABuffer());
+                    m_playedframecount++;
+                    {
+                        sf::Lock texturelock(m_texturelock);
+                        m_videotexture.update(m_queuedvideopackets.front()->GetRGBABuffer());
+                    }
                     m_queuedvideopackets.pop();
                     break;
                 }
@@ -96,10 +104,12 @@ namespace mt
         if (NewState == State::Playing && PreviousState == State::Stopped)
         {
             m_framejump = 1;
+            m_playedframecount = 0;
         }
         else if (NewState == State::Stopped)
         {
             m_framejump = 0;
+            m_playedframecount = 0;
             SetInitialBuffer();
             sf::Lock lock(m_protectionlock);
             while (m_queuedvideopackets.size() > 0)
@@ -109,7 +119,7 @@ namespace mt
         }
     }
 
-    const sf::Color VideoPlayback::GetBufferColor()
+    sf::Color VideoPlayback::GetBufferColor() const
     {
         return m_buffercolor;
     }
@@ -118,6 +128,17 @@ namespace mt
     {
         m_buffercolor = BufferColor;
         if (m_datasource && m_datasource->GetState() == State::Stopped) SetInitialBuffer();
+    }
+
+    sf::Image VideoPlayback::GetLastFrame() const
+    {
+        sf::Lock texturelock(m_texturelock);
+        return m_videotexture.copyToImage();
+    }
+
+    unsigned int VideoPlayback::GetPlayedFrameCount() const
+    {
+        return m_playedframecount;
     }
 }
 
@@ -158,6 +179,16 @@ void mtVideoPlayback_DrawRenderWindow(mtVideoPlayback* VideoPlayback, sfRenderWi
 void mtVideoPlayback_DrawRenderTexture(mtVideoPlayback* VideoPlayback, sfRenderTexture* RenderTexture, sfRenderStates* RenderStates)
 {
     RenderTexture->This.draw(*VideoPlayback->Value, convertRenderStates(RenderStates));
+}
+
+void mtVideoPlayback_GetLastFrame(mtVideoPlayback* VideoPlayback, sfImage* Image)
+{
+    Image->This = VideoPlayback->Value->GetLastFrame();
+}
+
+unsigned int mtVideoPlayback_GetPlayedFrameCount(mtVideoPlayback* VideoPlayback)
+{
+    return VideoPlayback->Value->GetPlayedFrameCount();
 }
 
 #endif

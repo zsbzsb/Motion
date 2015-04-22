@@ -46,6 +46,7 @@ namespace mt
 
     DataSource::~DataSource()
     {
+        Cleanup();
         {
             sf::Lock lock(m_playbacklock);
             while (m_videoplaybacks.size() > 0)
@@ -56,17 +57,15 @@ namespace mt
             while (m_audioplaybacks.size() > 0)
             {
                 m_audioplaybacks.back()->m_datasource = nullptr;
-                m_audioplaybacks.back()->stop();
                 m_audioplaybacks.pop_back();
             }
         }
-        Cleanup();
     }
 
     void DataSource::Cleanup()
     {
-        StopDecodeThread();
         Stop();
+        StopDecodeThread();
         m_videostreamid = -1;
         m_audiostreamid = -1;
         m_playingoffset = sf::Time::Zero;

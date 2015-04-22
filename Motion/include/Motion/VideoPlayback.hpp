@@ -16,6 +16,7 @@
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/Transform.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/Image.hpp>
 
 #include <Motion/Export.h>
 #include <Motion/DataSource.hpp>
@@ -36,10 +37,12 @@ namespace mt
         sf::Color m_buffercolor;
         DataSource* m_datasource;
         sf::Mutex m_protectionlock;
+        mutable sf::Mutex m_texturelock;
         std::queue<priv::VideoPacketPtr> m_queuedvideopackets;
         sf::Time m_elapsedtime;
         sf::Time m_frametime;
         int m_framejump;
+        unsigned int m_playedframecount;
 
         void SetInitialBuffer();
         void StateChanged(State PreviousState, State NewState);
@@ -48,8 +51,10 @@ namespace mt
     public:
         VideoPlayback(DataSource& DataSource, sf::Color BufferColor = sf::Color::Black);
         ~VideoPlayback();
-        const sf::Color GetBufferColor();
+        sf::Color GetBufferColor() const;
         void SetBufferColor(sf::Color BufferColor);
+        sf::Image GetLastFrame() const;
+        unsigned int GetPlayedFrameCount() const;
 
     protected:
         void draw(sf::RenderTarget& target, sf::RenderStates states) const;

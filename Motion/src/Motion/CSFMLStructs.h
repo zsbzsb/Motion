@@ -101,6 +101,11 @@ struct sfShader
     sf::Shader This;
 };
 
+struct sfImage
+{
+    sf::Image This;
+};
+
 typedef enum
 {
     sfBlendFactorZero,
