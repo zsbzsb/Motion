@@ -12,7 +12,6 @@ namespace mt
         m_buffercolor(BufferColor),
         m_datasource(&DataSource),
         m_protectionlock(),
-        m_texturelock(),
         m_queuedvideopackets(),
         m_elapsedtime(),
         m_frametime(DataSource.GetVideoFrameTime()),
@@ -56,7 +55,6 @@ namespace mt
     void VideoPlayback::draw(sf::RenderTarget& target, sf::RenderStates states) const
     {
         states.transform *= getTransform();
-        sf::Lock texturelock(m_texturelock);
         target.draw(m_videosprite, states);
     }
 
@@ -84,10 +82,7 @@ namespace mt
                 {
                     m_framejump -= 1;
                     m_playedframecount++;
-                    {
-                        sf::Lock texturelock(m_texturelock);
-                        m_videotexture.update(m_queuedvideopackets.front()->GetRGBABuffer());
-                    }
+                    m_videotexture.update(m_queuedvideopackets.front()->GetRGBABuffer());
                     m_queuedvideopackets.pop();
                     break;
                 }
@@ -132,7 +127,6 @@ namespace mt
 
     sf::Image VideoPlayback::GetLastFrame() const
     {
-        sf::Lock texturelock(m_texturelock);
         return m_videotexture.copyToImage();
     }
 

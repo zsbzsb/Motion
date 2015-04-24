@@ -37,7 +37,6 @@ namespace mt
         sf::Color m_buffercolor;
         DataSource* m_datasource;
         sf::Mutex m_protectionlock;
-        mutable sf::Mutex m_texturelock;
         std::queue<priv::VideoPacketPtr> m_queuedvideopackets;
         sf::Time m_elapsedtime;
         sf::Time m_frametime;
