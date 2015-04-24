@@ -88,7 +88,7 @@ namespace mt
         if (m_videorgbaframe) DestroyPictureFrame(m_videorgbaframe, m_videorgbabuffer);
         if (m_audiorawbuffer)
         {
-            avcodec_free_frame(&m_audiorawbuffer);
+            av_frame_free(&m_audiorawbuffer);
             m_audiorawbuffer = nullptr;
         }
         if (m_audiopcmbuffer)
@@ -208,7 +208,7 @@ namespace mt
                     }
                     else
                     {
-                        m_audiorawbuffer = avcodec_alloc_frame();
+                        m_audiorawbuffer = av_frame_alloc();
                         if (!m_audiorawbuffer)
                         {
                             std::cout << "Motion: Failed to allocate audio buffer" << std::endl;
@@ -223,7 +223,7 @@ namespace mt
                             }
                             else
                             {
-                                avcodec_get_frame_defaults(m_audiorawbuffer);
+                                av_frame_unref(m_audiorawbuffer);
                                 m_audioswcontext = swr_alloc();
                                 uint64_t inchanlayout = m_audiocontext->channel_layout;
                                 if (inchanlayout == 0) inchanlayout = av_get_default_channel_layout(m_audiocontext->channels);
@@ -594,13 +594,13 @@ namespace mt
     AVFrame* DataSource::CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
     {
         AVFrame *picture;
-        picture = avcodec_alloc_frame();
+        picture = av_frame_alloc();
         if (!picture) return nullptr;
         int size = avpicture_get_size(SelectedPixelFormat, Width, Height);
         PictureBuffer = (uint8_t*)av_malloc(size);
         if (!PictureBuffer)
         {
-            avcodec_free_frame(&picture);
+            av_frame_free(&picture);
             return nullptr;
         }
         avpicture_fill((AVPicture*)picture, PictureBuffer, SelectedPixelFormat, Width, Height);
@@ -610,7 +610,7 @@ namespace mt
     void DataSource::DestroyPictureFrame(AVFrame*& PictureFrame, uint8_t*& PictureBuffer)
     {
         av_free(PictureBuffer);
-        avcodec_free_frame(&PictureFrame);
+        av_frame_free(&PictureFrame);
         PictureBuffer = nullptr;
         PictureFrame = nullptr;
     }
