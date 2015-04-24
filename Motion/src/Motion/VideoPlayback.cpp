@@ -55,7 +55,7 @@ namespace mt
 
     void VideoPlayback::Update(sf::Time DeltaTime)
     {
-        if (m_datasource)
+        if (m_datasource && m_datasource->HasVideo())
         {
             if (m_datasource->GetState() == State::Playing)
             {
