@@ -42,6 +42,7 @@ namespace mt
 
         bool onGetData(Chunk& data);
         void onSeek(sf::Time timeOffset);
+        void SourceReloaded();
         void StateChanged(State PreviousState, State NewState);
     public:
         AudioPlayback(DataSource& DataSource, sf::Time OffsetCorrection = sf::milliseconds(300));

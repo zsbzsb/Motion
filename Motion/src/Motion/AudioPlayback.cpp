@@ -7,8 +7,8 @@
 namespace mt
 {
     AudioPlayback::AudioPlayback(DataSource& DataSource, sf::Time AudioOffsetCorrection) :
-        m_audioplayrate(sf::seconds(static_cast<float>(DataSource.GetAudioSampleRate()))),
-        m_channelcount(DataSource.GetAudioChannelCount()),
+        m_audioplayrate(sf::Time::Zero),
+        m_channelcount(0),
         m_audioposition(),
         m_offsetcorrection(AudioOffsetCorrection),
         m_updateclock(),
@@ -17,14 +17,9 @@ namespace mt
         m_queuedaudiopackets(),
         m_activepacket(nullptr)
     {
-        if (m_datasource->HasAudio())
-        {
-            initialize(m_channelcount, m_datasource->GetAudioSampleRate());
-            setPitch(m_datasource->GetPlaybackSpeed());
-            StateChanged(m_datasource->GetState(), m_datasource->GetState());
-            sf::Lock lock(m_datasource->m_playbacklock);
-            m_datasource->m_audioplaybacks.push_back(this);
-        }
+        SourceReloaded();
+        sf::Lock lock(m_datasource->m_playbacklock);
+        m_datasource->m_audioplaybacks.push_back(this);
     }
 
     AudioPlayback::~AudioPlayback()
@@ -103,15 +98,27 @@ namespace mt
         // nothing to do
     }
 
+    void AudioPlayback::SourceReloaded()
+    {
+        if (m_datasource->HasAudio())
+        {
+            m_audioplayrate = sf::seconds(static_cast<float>(m_datasource->GetAudioSampleRate()));
+            m_channelcount = m_datasource->GetAudioChannelCount();
+            initialize(m_channelcount, m_datasource->GetAudioSampleRate());
+            setPitch(m_datasource->GetPlaybackSpeed());
+            StateChanged(m_datasource->GetState(), m_datasource->GetState());
+        }
+    }
+
     void AudioPlayback::StateChanged(State PreviousState, State NewState)
     {
-        if (NewState == State::Playing)
+        if (NewState == State::Playing && m_datasource->HasAudio())
         {
             play();
             sf::Lock lock(m_protectionlock);
             m_updateclock.restart();
         }
-        else if (NewState == State::Paused)
+        else if (NewState == State::Paused && m_datasource->HasAudio())
         {
             pause();
         }

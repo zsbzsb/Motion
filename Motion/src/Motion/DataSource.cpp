@@ -247,6 +247,15 @@ namespace mt
         if (HasVideo() || HasAudio())
         {
             StartDecodeThread();
+            sf::Lock lock(m_playbacklock);
+            for (auto& videoplayback : m_videoplaybacks)
+            {
+                videoplayback->SourceReloaded();
+            }
+            for (auto& audioplayback : m_audioplaybacks)
+            {
+                audioplayback->SourceReloaded();
+            }
             return true;
         }
         else

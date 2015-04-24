@@ -44,6 +44,7 @@ namespace mt
         unsigned int m_playedframecount;
 
         void SetInitialBuffer();
+        void SourceReloaded();
         void StateChanged(State PreviousState, State NewState);
         void Update(sf::Time DeltaTime);
 

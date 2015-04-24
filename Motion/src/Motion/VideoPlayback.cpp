@@ -14,18 +14,13 @@ namespace mt
         m_protectionlock(),
         m_queuedvideopackets(),
         m_elapsedtime(),
-        m_frametime(DataSource.GetVideoFrameTime()),
+        m_frametime(sf::Time::Zero),
         m_framejump(0),
         m_playedframecount(0)
     {
-        if (m_datasource->HasVideo())
-        {
-            m_videotexture.create(m_datasource->GetVideoSize().x, m_datasource->GetVideoSize().y);
-            m_videosprite.setTexture(m_videotexture);
-            SetInitialBuffer();
-            sf::Lock lock(m_datasource->m_playbacklock);
-            m_datasource->m_videoplaybacks.push_back(this);
-        }
+        SourceReloaded();
+        sf::Lock lock(m_datasource->m_playbacklock);
+        m_datasource->m_videoplaybacks.push_back(this);
     }
 
     VideoPlayback::~VideoPlayback()
@@ -94,6 +89,17 @@ namespace mt
         }
     }
 
+    void VideoPlayback::SourceReloaded()
+    {
+        if (m_datasource->HasVideo())
+        {
+            m_frametime = m_datasource->GetVideoFrameTime();
+            m_videotexture.create(m_datasource->GetVideoSize().x, m_datasource->GetVideoSize().y);
+            m_videosprite.setTexture(m_videotexture);
+            SetInitialBuffer();
+        }
+    }
+
     void VideoPlayback::StateChanged(State PreviousState, State NewState)
     {
         if (NewState == State::Playing && PreviousState == State::Stopped)
@@ -105,7 +111,7 @@ namespace mt
         {
             m_framejump = 0;
             m_playedframecount = 0;
-            SetInitialBuffer();
+            if (m_datasource->HasVideo()) SetInitialBuffer();
             sf::Lock lock(m_protectionlock);
             while (m_queuedvideopackets.size() > 0)
             {
