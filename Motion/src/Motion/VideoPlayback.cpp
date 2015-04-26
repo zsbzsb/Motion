@@ -27,6 +27,7 @@ namespace mt
     {
         if (m_datasource)
         {
+            sf::Lock lock(m_datasource->m_playbacklock);
             for (auto& videoplayback : m_datasource->m_videoplaybacks)
             {
                 if (videoplayback == this)
@@ -95,7 +96,7 @@ namespace mt
         {
             m_frametime = m_datasource->GetVideoFrameTime();
             m_videotexture.create(m_datasource->GetVideoSize().x, m_datasource->GetVideoSize().y);
-            m_videosprite.setTexture(m_videotexture);
+            m_videosprite.setTexture(m_videotexture, true);
             SetInitialBuffer();
         }
     }

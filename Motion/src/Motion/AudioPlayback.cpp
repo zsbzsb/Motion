@@ -26,6 +26,7 @@ namespace mt
     {
         if (m_datasource)
         {
+            sf::Lock lock(m_datasource->m_playbacklock);
             for (auto& audioplayback : m_datasource->m_audioplaybacks)
             {
                 if (audioplayback == this)
