@@ -81,6 +81,7 @@ namespace mt
         void StartDecodeThread();
         void StopDecodeThread();
         void DecodeThreadRun();
+        bool IsFull();
         void NotifyStateChanged(State NewState);
 
     public:
