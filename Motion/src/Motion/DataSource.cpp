@@ -342,7 +342,6 @@ namespace mt
     {
         if (m_state != State::Stopped)
         {
-            m_playingtoeof = false;
             m_eofreached = true;
             NotifyStateChanged(State::Stopped);
             m_state = State::Stopped;
@@ -367,6 +366,7 @@ namespace mt
         {
             StopDecodeThread();
             m_playingoffset = PlayingOffset;
+            m_playingtoeof = false;
             bool startplaying = m_state == State::Playing;
             if (m_state != State::Stopped)
             {
