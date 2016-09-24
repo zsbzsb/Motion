@@ -75,7 +75,7 @@ namespace mt
         std::vector<mt::VideoPlayback*> m_videoplaybacks;
         std::vector<mt::AudioPlayback*> m_audioplaybacks;
 
-        AVFrame* CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
+        AVFrame* CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
         void DestroyPictureFrame(AVFrame*& PictureFrame, unsigned char*& PictureBuffer);
         void Cleanup();
         void StartDecodeThread();

@@ -66,5 +66,10 @@ motion_set_option(FFMPEG_AVFORMAT_LIB "avformat.lib" STRING "avformat")
 motion_set_option(FFMPEG_AVCODEC_LIB "avcodec.lib" STRING "avcodec")
 motion_set_option(FFMPEG_SWSCALE_LIB "swscale.lib" STRING "swscale")
 motion_set_option(FFMPEG_SWRESAMPLE_LIB "swresample.lib" STRING "swresample")
+
 include_directories(${FFMPEG_INCLUDE_DIR})
 target_link_libraries(Motion ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVUTIL_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVFORMAT_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVCODEC_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWSCALE_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWRESAMPLE_LIB})
+
+if(MOTION_OS_WINDOWS)
+    target_link_libraries(Motion legacy_stdio_definitions.lib)
+endif()

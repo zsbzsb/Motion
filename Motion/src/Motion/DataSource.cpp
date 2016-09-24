@@ -7,6 +7,14 @@
 #define MAX_AUDIO_SAMPLES 192000
 #define PACKET_QUEUE_AMOUNT 5
 
+// Hack to deal with VS2015 and the 'awesome'... "Universal CRT"
+#if WIN32	 && _MSC_VER > 1300
+
+FILE _iob[] = { *stdin, *stdout, *stderr };
+extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
+
+#endif
+
 namespace mt
 {
     DataSource::DataSource() :
@@ -166,7 +174,7 @@ namespace mt
                     {
                         m_videosize = sf::Vector2i(m_videocontext->width, m_videocontext->height);
                         m_videorawframe = CreatePictureFrame(m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, m_videorawbuffer);
-                        m_videorgbaframe = CreatePictureFrame(PIX_FMT_RGBA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
+                        m_videorgbaframe = CreatePictureFrame(AVPixelFormat::AV_PIX_FMT_BGRA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
                         if (!m_videorawframe || !m_videorgbaframe)
                         {
                             std::cout << "Motion: Failed to create video frames" << std::endl;
@@ -176,7 +184,7 @@ namespace mt
                         {
                             int swapmode = SWS_FAST_BILINEAR;
                             if (m_videosize.x * m_videosize.y <= 500000 && m_videosize.x % 8 != 0) swapmode |= SWS_ACCURATE_RND;
-                            m_videoswcontext = sws_getCachedContext(nullptr, m_videosize.x, m_videosize.y, m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
+                            m_videoswcontext = sws_getCachedContext(nullptr, m_videosize.x, m_videosize.y, m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, AVPixelFormat::AV_PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
                         }
                     }
                 }
@@ -563,7 +571,7 @@ namespace mt
         return true;
     }
 
-    AVFrame* DataSource::CreatePictureFrame(enum PixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
+    AVFrame* DataSource::CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
     {
         AVFrame *picture;
         picture = av_frame_alloc();
