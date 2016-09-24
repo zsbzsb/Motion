@@ -42,6 +42,7 @@ namespace mt
 
         bool onGetData(Chunk& data);
         void onSeek(sf::Time timeOffset);
+        bool WaitForData();
         void SourceReloaded();
         void StateChanged(State PreviousState, State NewState);
     public:

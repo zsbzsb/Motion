@@ -43,17 +43,9 @@ namespace mt
 
     bool AudioPlayback::onGetData(Chunk& data)
     {
-        bool hasdata = false;
-        while (!hasdata && m_datasource && !m_datasource->m_eofreached)
-        {
-            {
-                sf::Lock lock(m_protectionlock);
-                hasdata = m_queuedaudiopackets.size() > 0;
-            }
-            if(!hasdata) std::this_thread::sleep_for(std::chrono::milliseconds(3));
-        }
+        bool hasdata = WaitForData();
         sf::Lock lock(m_protectionlock);
-        m_audioposition -= m_updateclock.restart() * getPitch();
+        m_activepacket = nullptr;
         if (m_datasource && hasdata)
         {
             if (m_offsetcorrection != sf::Time::Zero && m_audioposition >= m_offsetcorrection)
@@ -64,18 +56,27 @@ namespace mt
                 newsamples.resize(samplecount);
                 m_activepacket = std::make_shared<priv::AudioPacket>(&newsamples[0], samplecount / m_channelcount, m_channelcount);
                 m_audioposition -= sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
+
             }
             else if (m_offsetcorrection != sf::Time::Zero && m_audioposition < -m_offsetcorrection)
             {
                 // skip samples
-                while (m_audioposition <= -m_offsetcorrection && m_queuedaudiopackets.size() > 1)
+                bool shouldSkip = true;
+                while (shouldSkip && hasdata)
                 {
                     m_audioposition += sf::seconds(m_queuedaudiopackets.front()->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
                     m_queuedaudiopackets.pop();
+                    m_protectionlock.unlock(); // unlock to wait for data
+                    hasdata = WaitForData();
+                    m_protectionlock.lock(); // relock after waiting for data
+                    shouldSkip = m_audioposition <= -m_offsetcorrection;
                 }
-                m_activepacket = m_queuedaudiopackets.front();
-                m_queuedaudiopackets.pop();
-                m_audioposition += sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount) * 2.f;
+                if (hasdata)
+                {
+                    m_activepacket = m_queuedaudiopackets.front();
+                    m_queuedaudiopackets.pop();
+                    m_audioposition += sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
+                }
             }
             else
             {
@@ -87,16 +88,41 @@ namespace mt
                     m_audioposition += sf::seconds(m_activepacket->GetSamplesBufferLength() / m_audioplayrate.asSeconds() / m_channelcount);
                 }
             }
+        }
+        if (m_activepacket)
+        {
             data.samples = m_activepacket->GetSamplesBuffer();
             data.sampleCount = m_activepacket->GetSamplesBufferLength();
-            return true;
         }
-        else return false;
+        return static_cast<bool>(m_activepacket);
     }
 
     void AudioPlayback::onSeek(sf::Time timeOffset)
     {
         // nothing to do
+    }
+
+    bool AudioPlayback::WaitForData()
+    {
+        bool hasdata = false;
+        while (!hasdata && m_datasource && !m_datasource->m_eofreached)
+        {
+            {
+                sf::Lock lock(m_protectionlock);
+                hasdata = m_queuedaudiopackets.size() > 0;
+                if (hasdata)
+                    m_audioposition -= m_updateclock.restart() * getPitch();
+            }
+            if (!hasdata) std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        }
+
+        if (!hasdata)
+        {
+            sf::Lock lock(m_protectionlock);
+            m_audioposition -= m_updateclock.restart() * getPitch();
+        }
+
+        return hasdata;
     }
 
     void AudioPlayback::SourceReloaded()
