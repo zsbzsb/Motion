@@ -53,7 +53,7 @@ macro(motion_add_library target)
         set_target_properties(${target} PROPERTIES COMPILE_FLAGS -fvisibility=hidden)
     endif()
 
-    # link the target to its external dependencies (CSFML libraries)
+    # link the target to its external dependencies
     target_link_libraries(${target} ${THIS_DEPENDS})
 
     # add the install rule

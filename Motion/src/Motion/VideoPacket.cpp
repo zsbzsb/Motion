@@ -8,19 +8,19 @@ namespace mt
     namespace priv
     {
         VideoPacket::VideoPacket(uint8_t* RGBABufferSource, int Width, int Height) :
-            m_rgbabuffer(new uint8_t[Width * Height * 4])
+            m_rgbaBuffer(new uint8_t[Width * Height * 4])
         {
-            std::memcpy(m_rgbabuffer, RGBABufferSource, Width * Height * 4);
+            std::memcpy(m_rgbaBuffer, RGBABufferSource, Width * Height * 4);
         }
 
         VideoPacket::~VideoPacket()
         {
-            delete[] m_rgbabuffer;
+            delete[] m_rgbaBuffer;
         }
 
         const uint8_t* VideoPacket::GetRGBABuffer()
         {
-            return m_rgbabuffer;
+            return m_rgbaBuffer;
         }
     }
 }

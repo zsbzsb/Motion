@@ -1,20 +1,25 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MotionNET
 {
-    internal class InternalBaseMember : InternalBase
+    /// <summary>DO NOT USE - for internal use only</summary>
+    public class InternalBaseMember : InternalBase
     {
+        #region Events
         public event Action DestroyCalled;
+        #endregion
+
+        #region Functions
         public new void EnsureValid()
         {
             base.EnsureValid();
         }
+
         protected override void Destroy()
         {
-            if (DestroyCalled != null) DestroyCalled();
+            DestroyCalled?.Invoke();
             base.Destroy();
         }
+        #endregion
     }
 }

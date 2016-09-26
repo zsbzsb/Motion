@@ -1,8 +1,8 @@
-﻿using System;
-using SFML.System;
+﻿using SFML.System;
 using SFML.Window;
 using SFML.Graphics;
 using MotionNET;
+using MotionNET.SFML;
 
 namespace MotionNET_Example
 {
@@ -37,8 +37,8 @@ namespace MotionNET_Example
             if (!datasource.LoadFromFile("{video file path}")) // load a file into the data source
                 return;
 
-            AudioPlayback audioplayback = new AudioPlayback(datasource); // create an audio playback from our data source
-            VideoPlayback videoplayback = new VideoPlayback(datasource); // create a video playback from our data source
+            SFMLAudioPlayback audioplayback = new SFMLAudioPlayback(datasource); // create an audio playback from our data source
+            SFMLVideoPlayback videoplayback = new SFMLVideoPlayback(datasource); // create a video playback from our data source
 
             // scale video to fit the window
             videoplayback.Scale = new Vector2f(640f / (float)datasource.VideoSize.X, 480f / (float)datasource.VideoSize.Y);

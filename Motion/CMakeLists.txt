@@ -1,5 +1,4 @@
-
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0.2)
 
 # define a macro that helps defining an option
 macro(motion_set_option var default type docstring)
@@ -39,7 +38,7 @@ set(CMAKE_SKIP_BUILD_RPATH TRUE)
 # define an option for choosing between static and dynamic C runtime (Windows only)
 if(MOTION_OS_WINDOWS)
     set(STATIC_STD_LIBS FALSE CACHE BOOL "TRUE to statically link to the standard libraries, FALSE to use them as DLLs")
-    
+
     # for VC++, we can apply it globally by modifying the compiler flags
     if(MOTION_COMPILER_MSVC AND STATIC_STD_LIBS)
         foreach(flag

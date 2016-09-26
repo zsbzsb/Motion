@@ -30,8 +30,8 @@ int main()
     if (!datasource.LoadFromFile("{video file path}")) // load a file into the data source
         return EXIT_FAILURE;
 
-    mt::AudioPlayback audioplayback(datasource); // create an audio playback from our data source
-    mt::VideoPlayback videoplayback(datasource); // create a video playback from our data source
+    mt::SFMLAudioPlayback audioplayback(datasource); // create an audio playback from our data source
+    mt::SFMLVideoPlayback videoplayback(datasource); // create a video playback from our data source
 
     // scale video to fit the window
     videoplayback.setScale(640.f / static_cast<float>(datasource.GetVideoSize().x), 480.f / static_cast<float>(datasource.GetVideoSize().y));

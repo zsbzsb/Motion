@@ -1,20 +1,36 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotionNET", "MotionNET.csproj", "{A947192E-0DDB-4A4F-A90D-ED5491E826A9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotionNET", "MotionNET\MotionNET.csproj", "{A947192E-0DDB-4A4F-A90D-ED5491E826A9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotionNET.SFML", "MotionNET.SFML\MotionNET.SFML.csproj", "{DCF8D510-B161-4218-93C3-EF39558E3DF5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Debug|x64.ActiveCfg = Debug|x64
+		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Debug|x64.Build.0 = Debug|x64
 		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Debug|x86.ActiveCfg = Debug|x86
 		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Debug|x86.Build.0 = Debug|x86
+		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Release|x64.ActiveCfg = Release|x64
+		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Release|x64.Build.0 = Release|x64
 		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Release|x86.ActiveCfg = Release|x86
 		{A947192E-0DDB-4A4F-A90D-ED5491E826A9}.Release|x86.Build.0 = Release|x86
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Debug|x64.ActiveCfg = Debug|x64
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Debug|x64.Build.0 = Debug|x64
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Debug|x86.ActiveCfg = Debug|x86
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Debug|x86.Build.0 = Debug|x86
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Release|x64.ActiveCfg = Release|x64
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Release|x64.Build.0 = Release|x64
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Release|x86.ActiveCfg = Release|x86
+		{DCF8D510-B161-4218-93C3-EF39558E3DF5}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

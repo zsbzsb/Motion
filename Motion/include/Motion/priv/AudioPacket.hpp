@@ -6,15 +6,6 @@
 #include <memory>
 #include <cstring>
 
-extern "C"
-{
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-#include <libswresample/swresample.h>
-#include <libavutil/opt.h>
-}
-
 namespace mt
 {
     namespace priv
@@ -23,8 +14,10 @@ namespace mt
         {
         private:
             int16_t* m_samples;
-            std::size_t m_samplebufferlength;
+            std::size_t m_sampleBufferLength;
+
         public:
+            AudioPacket(std::size_t SampleCount, std::size_t ChannelCount);
             AudioPacket(void* SamplesSource, std::size_t SampleCount, std::size_t ChannelCount);
             ~AudioPacket();
             const int16_t* GetSamplesBuffer();

@@ -13,7 +13,15 @@ typedef int sfBool;
 #define sfTrue  1
 // Motion Types
 typedef struct mtDataSource mtDataSource;
-typedef struct mtAudioPlayback mtAudioPlayback;
-typedef struct mtVideoPlayback mtVideoPlayback;
+typedef struct mtAudioPlaybackBase mtAudioPlaybackBase;
+typedef struct mtVideoPlaybackBase mtVideoPlaybackBase;
+typedef struct mtSFMLAudioPlayback mtSFMLAudioPlayback;
+typedef struct mtSFMLVideoPlayback mtSFMLVideoPlayback;
+typedef void(*mtCreateTextureCB)(int Width, int Height);
+typedef void(*mtUpdateTextureCB)(const uint8_t* RGBABuffer);
+typedef void(*mtClearTextureCB)();
+typedef void(*mtSetupStreamCB)(unsigned int ChannelCount, int SampleRate);
+typedef void(*mtSetPlaybackSpeedCB)(float PlaybackSpeed);
+typedef void(*mtChangeStateCB)();
 
 #endif

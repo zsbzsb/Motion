@@ -19,7 +19,7 @@ namespace MotionNET
         }
         #endregion
 
-        #region Constructors/Destructors
+        #region CTOR
         ~InternalBase()
         {
             Dispose();
@@ -43,14 +43,19 @@ namespace MotionNET
                         Console.WriteLine("Suppresed exception during Dispose() call - run in debug mode to throw the exception.");
                     #endif
                 }
+
                 _disposed = true;
+
                 GC.SuppressFinalize(this);
             }
         }
+
         protected virtual void Destroy() { }
+
         protected void EnsureValid()
         {
-            if (_disposed) throw new Exception("Attempt to access disposed object");
+            if (_disposed)
+                throw new Exception("Attempt to access disposed object");
         }
         #endregion
     }

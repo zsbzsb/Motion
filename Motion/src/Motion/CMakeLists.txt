@@ -1,4 +1,3 @@
-
 # include the Motion specific macros
 include(${CMAKE_SOURCE_DIR}/cmake/Macros.cmake)
 
@@ -23,7 +22,7 @@ if(MOTION_OS_WINDOWS)
         add_definitions(-DSFML_STATIC)
     endif()
 endif()
-find_package(SFML 2 COMPONENTS system window graphics audio REQUIRED)
+find_package(SFML 2.5 COMPONENTS system window graphics audio REQUIRED)
 include_directories(${SFML_INCLUDE_DIR})
 
 set(INCROOT ${CMAKE_SOURCE_DIR}/include/Motion)
@@ -35,19 +34,23 @@ set(SRC
     ${INCROOT}/priv/AudioPacket.hpp
     ${SRCROOT}/AudioPacket.cpp
     ${INCROOT}/AudioPlayback.h
-    ${INCROOT}/AudioPlayback.hpp
-    ${SRCROOT}/AudioPlayback.cpp
+    ${INCROOT}/AudioPlaybackBase.hpp
+    ${SRCROOT}/AudioPlaybackBase.cpp
     ${INCROOT}/DataSource.h
     ${INCROOT}/DataSource.hpp
     ${SRCROOT}/DataSource.cpp
     ${INCROOT}/Motion.hpp
     ${SRCROOT}/MotionStructs.h
     ${INCROOT}/State.hpp
+    ${INCROOT}/SFMLAudioPlayback.hpp
+    ${SRCROOT}/SFMLAudioPlayback.cpp
+    ${INCROOT}/SFMLVideoPlayback.hpp
+    ${SRCROOT}/SFMLVideoPlayback.cpp
     ${INCROOT}/priv/VideoPacket.hpp
     ${SRCROOT}/VideoPacket.cpp
     ${INCROOT}/VideoPlayback.h
-    ${INCROOT}/VideoPlayback.hpp
-    ${SRCROOT}/VideoPlayback.cpp
+    ${INCROOT}/VideoPlaybackBase.hpp
+    ${SRCROOT}/VideoPlaybackBase.cpp
     ${INCROOT}/Types.h
     ${SRCROOT}/CSFMLStructs.h
 )
@@ -55,7 +58,7 @@ set(SRC
 # define the motion target
 motion_add_library(Motion
                   SOURCES ${SRC}
-                  DEPENDS ${SFML_GRAPHICS_LIBRARY} ${SFML_WINDOW_LIBRARY} ${SFML_AUDIO_LIBRARY} ${SFML_SYSTEM_LIBRARY} ${SFML_GRAPHICS_DEPENDENCIES} ${SFML_WINDOW_DEPENDENCIES} ${SFML_AUDIO_DEPENDENCIES} ${SFML_SYSTEM_DEPENDENCIES})
+                  DEPENDS sfml-graphics sfml-window sfml-system sfml-audio)
 
 
 # include FFMPEG

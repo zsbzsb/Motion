@@ -20,9 +20,9 @@
 
 #include <Motion/Export.h>
 #include <Motion/priv/AudioPacket.hpp>
-#include <Motion/AudioPlayback.hpp>
+#include <Motion/AudioPlaybackBase.hpp>
 #include <Motion/priv/VideoPacket.hpp>
-#include <Motion/VideoPlayback.hpp>
+#include <Motion/VideoPlaybackBase.hpp>
 #include <Motion/State.hpp>
 
 extern "C"
@@ -36,47 +36,50 @@ extern "C"
 
 namespace mt
 {
-    class VideoPlayback;
+    class VideoPlaybackBase;
     class AudioPlayback;
 
     class MOTION_CXX_API DataSource : private sf::NonCopyable
     {
-        friend class VideoPlayback;
-        friend class AudioPlayback;
+        friend class VideoPlaybackBase;
+        friend class AudioPlaybackBase;
 
     private:
-        int m_videostreamid;
-        int m_audiostreamid;
-        sf::Clock m_updateclock;
-        sf::Time m_playingoffset;
-        sf::Time m_filelength;
-        sf::Vector2i m_videosize;
-        int m_audiochannelcount;
-        float m_playbackspeed;
-        AVFormatContext* m_formatcontext;
-        AVCodecContext* m_videocontext;
-        AVCodecContext* m_audiocontext;
-        AVCodec* m_videocodec;
-        AVCodec* m_audiocodec;
-        AVFrame* m_videorawframe;
-        AVFrame* m_videorgbaframe;
-        AVFrame* m_audiorawbuffer;
-        uint8_t* m_videorawbuffer;
-        uint8_t* m_videorgbabuffer;
-        uint8_t* m_audiopcmbuffer;
-        SwsContext* m_videoswcontext;
-        SwrContext* m_audioswcontext;
-        State m_state;
-        std::unique_ptr<std::thread> m_decodethread;
-        std::atomic<bool> m_shouldthreadrun;
-        std::atomic<bool> m_eofreached;
-        std::atomic<bool> m_playingtoeof;
-        sf::Mutex m_playbacklock;
-        std::vector<mt::VideoPlayback*> m_videoplaybacks;
-        std::vector<mt::AudioPlayback*> m_audioplaybacks;
+        sf::Clock m_updateClock;
+        sf::Time m_playingOffset;
+        sf::Time m_fileLength;
+        sf::Vector2i m_videoSize;
+        int m_audioChannelCount;
+        float m_playbackSpeed;
 
-        AVFrame* CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, unsigned char*& PictureBuffer);
-        void DestroyPictureFrame(AVFrame*& PictureFrame, unsigned char*& PictureBuffer);
+        int m_videoStreamID;
+        int m_audioStreamID;
+        AVFormatContext* m_formatContext;
+        AVCodecContext* m_videoContext;
+        AVCodecContext* m_audioContext;
+        AVCodec* m_videoCodec;
+        AVCodec* m_audioCodec;
+        AVFrame* m_videoRawFrame;
+        AVFrame* m_videoRGBAFrame;
+        AVFrame* m_audioRawBuffer;
+        uint8_t* m_videoRawBuffer;
+        uint8_t* m_videoRGBABuffer;
+        uint8_t* m_audioPCMBuffer;
+        SwsContext* m_videoSWContext;
+        SwrContext* m_audioSWContext;
+
+        State m_state;
+        std::unique_ptr<std::thread> m_decodeThread;
+        std::atomic<bool> m_shouldThreadRun;
+        std::atomic<bool> m_EOFReached;
+        std::atomic<bool> m_PlayingToEOF;
+
+        sf::Mutex m_playbackMutex;
+        std::vector<mt::VideoPlaybackBase*> m_videoPlaybacks;
+        std::vector<mt::AudioPlaybackBase*> m_audioPlaybacks;
+
+        AVFrame* CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer);
+        void DestroyPictureFrame(AVFrame*& PictureFrame, uint8_t*& PictureBuffer);
         void Cleanup();
         void StartDecodeThread();
         void StopDecodeThread();
@@ -91,20 +94,20 @@ namespace mt
         void Play();
         void Pause();
         void Stop();
-        const bool HasVideo();
-        const bool HasAudio();
-        const sf::Vector2i GetVideoSize();
-        const State GetState();
-        const sf::Time GetVideoFrameTime();
-        const int GetAudioChannelCount();
-        const int GetAudioSampleRate();
-        const sf::Time GetFileLength();
-        const sf::Time GetPlayingOffset();
+        bool HasVideo() const;
+        bool HasAudio() const;
+        sf::Vector2i GetVideoSize() const;
+        State GetState() const;
+        sf::Time GetVideoFrameTime() const;
+        int GetAudioChannelCount() const;
+        int GetAudioSampleRate() const;
+        sf::Time GetFileLength() const;
+        sf::Time GetPlayingOffset() const;
         void SetPlayingOffset(sf::Time PlayingOffset);
         void Update();
-        const float GetPlaybackSpeed();
+        float GetPlaybackSpeed() const;
         void SetPlaybackSpeed(float PlaybackSpeed);
-        const bool IsEndofFileReached();
+        bool IsEndofFileReached() const;
     };
 }
 

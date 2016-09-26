@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("MotionNET")]
+[assembly: AssemblyTitle("MotionNET.SFML")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("MotionNET")]
-[assembly: AssemblyCopyright("Copyright © Zachariah Brown 2014")]
+[assembly: AssemblyProduct("MotionNET.SFML")]
+[assembly: AssemblyCopyright("Copyright © Zachariah Brown")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("6d481b90-db1e-4e65-968d-cb46c7ae6d2e")]
+[assembly: Guid("cb39338c-e772-4313-b9a2-6eb355ee1de2")]
 
 // Version information for an assembly consists of the following four values:
 //

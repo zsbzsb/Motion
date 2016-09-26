@@ -4,8 +4,9 @@
 #include <Motion/DataSource.h>
 #include <Motion/DataSource.hpp>
 
-#define MAX_AUDIO_SAMPLES 192000
-#define PACKET_QUEUE_AMOUNT 5
+constexpr std::size_t MAX_AUDIO_SAMPLES = 192000;
+constexpr std::size_t PACKET_QUEUE_AMOUNT = 5;
+constexpr AVRational TIME_BASE_Q = { 1, AV_TIME_BASE };
 
 // Hack to deal with VS2015 and the 'awesome'... "Universal CRT"
 #if WIN32	 && _MSC_VER > 1300
@@ -18,35 +19,35 @@ extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
 namespace mt
 {
     DataSource::DataSource() :
-        m_videostreamid(-1),
-        m_audiostreamid(-1),
-        m_updateclock(),
-        m_playingoffset(),
-        m_filelength(sf::seconds(-1)),
-        m_videosize(-1, -1),
-        m_audiochannelcount(-1),
-        m_playbackspeed(1),
-        m_formatcontext(nullptr),
-        m_videocontext(nullptr),
-        m_audiocontext(nullptr),
-        m_videocodec(nullptr),
-        m_audiocodec(nullptr),
-        m_videorawframe(nullptr),
-        m_videorgbaframe(nullptr),
-        m_audiorawbuffer(nullptr),
-        m_videorawbuffer(nullptr),
-        m_videorgbabuffer(nullptr),
-        m_audiopcmbuffer(nullptr),
-        m_videoswcontext(nullptr),
-        m_audioswcontext(nullptr),
+        m_updateClock(),
+        m_playingOffset(),
+        m_fileLength(sf::seconds(-1)),
+        m_videoSize(-1, -1),
+        m_audioChannelCount(-1),
+        m_playbackSpeed(1),
+        m_videoStreamID(-1),
+        m_audioStreamID(-1),
+        m_formatContext(nullptr),
+        m_videoContext(nullptr),
+        m_audioContext(nullptr),
+        m_videoCodec(nullptr),
+        m_audioCodec(nullptr),
+        m_videoRawFrame(nullptr),
+        m_videoRGBAFrame(nullptr),
+        m_audioRawBuffer(nullptr),
+        m_videoRawBuffer(nullptr),
+        m_videoRGBABuffer(nullptr),
+        m_audioPCMBuffer(nullptr),
+        m_videoSWContext(nullptr),
+        m_audioSWContext(nullptr),
         m_state(State::Stopped),
-        m_decodethread(nullptr),
-        m_shouldthreadrun(false),
-        m_eofreached(false),
-        m_playingtoeof(false),
-        m_playbacklock(),
-        m_videoplaybacks(),
-        m_audioplaybacks()
+        m_decodeThread(nullptr),
+        m_shouldThreadRun(false),
+        m_EOFReached(false),
+        m_PlayingToEOF(false),
+        m_playbackMutex(),
+        m_videoPlaybacks(),
+        m_audioPlaybacks()
     {
         av_register_all();
     }
@@ -55,16 +56,18 @@ namespace mt
     {
         Cleanup();
         {
-            sf::Lock lock(m_playbacklock);
-            while (m_videoplaybacks.size() > 0)
+            sf::Lock lock(m_playbackMutex);
+
+            while (m_videoPlaybacks.size() > 0)
             {
-                m_videoplaybacks.back()->m_datasource = nullptr;
-                m_videoplaybacks.pop_back();
+                m_videoPlaybacks.back()->m_dataSource = nullptr;
+                m_videoPlaybacks.pop_back();
             }
-            while (m_audioplaybacks.size() > 0)
+
+            while (m_audioPlaybacks.size() > 0)
             {
-                m_audioplaybacks.back()->m_datasource = nullptr;
-                m_audioplaybacks.pop_back();
+                m_audioPlaybacks.back()->m_dataSource = nullptr;
+                m_audioPlaybacks.pop_back();
             }
         }
     }
@@ -73,517 +76,622 @@ namespace mt
     {
         Stop();
         StopDecodeThread();
-        m_videostreamid = -1;
-        m_audiostreamid = -1;
-        m_playingoffset = sf::Time::Zero;
-        m_filelength = sf::seconds(-1);
-        m_videosize = sf::Vector2i(-1, -1);
-        m_audiochannelcount = -1;
-        if (m_videocontext)
+
+        m_videoStreamID = -1;
+        m_audioStreamID = -1;
+        m_playingOffset = sf::Time::Zero;
+        m_fileLength = sf::seconds(-1);
+        m_videoSize = sf::Vector2i(-1, -1);
+        m_audioChannelCount = -1;
+
+        if (m_videoContext)
         {
-            avcodec_close(m_videocontext);
-            m_videocontext = nullptr;
+            avcodec_close(m_videoContext);
+            m_videoContext = nullptr;
         }
-        m_videocodec = nullptr;
-        if (m_audiocontext)
+
+        m_videoCodec = nullptr;
+
+        if (m_audioContext)
         {
-            avcodec_close(m_audiocontext);
-            m_audiocontext = nullptr;
+            avcodec_close(m_audioContext);
+            m_audioContext = nullptr;
         }
-        m_audiocodec = nullptr;
-        if (m_videorawframe) DestroyPictureFrame(m_videorawframe, m_videorawbuffer);
-        if (m_videorgbaframe) DestroyPictureFrame(m_videorgbaframe, m_videorgbabuffer);
-        if (m_audiorawbuffer)
+
+        m_audioCodec = nullptr;
+
+        if (m_videoRawFrame) DestroyPictureFrame(m_videoRawFrame, m_videoRawBuffer);
+        if (m_videoRGBAFrame) DestroyPictureFrame(m_videoRGBAFrame, m_videoRGBABuffer);
+
+        if (m_audioRawBuffer)
         {
-            av_frame_free(&m_audiorawbuffer);
-            m_audiorawbuffer = nullptr;
+            av_frame_free(&m_audioRawBuffer);
+            m_audioRawBuffer = nullptr;
         }
-        if (m_audiopcmbuffer)
+
+        if (m_audioPCMBuffer)
         {
-            av_free(m_audiopcmbuffer);
-            m_audiopcmbuffer = nullptr;
+            av_free(m_audioPCMBuffer);
+            m_audioPCMBuffer = nullptr;
         }
-        if (m_videoswcontext)
+
+        if (m_videoSWContext)
         {
-            sws_freeContext(m_videoswcontext);
-            m_videoswcontext = nullptr;
+            sws_freeContext(m_videoSWContext);
+            m_videoSWContext = nullptr;
         }
-        if (m_audioswcontext)
+
+        if (m_audioSWContext)
         {
-            swr_free(&m_audioswcontext);
-            m_audioswcontext = nullptr;
+            swr_free(&m_audioSWContext);
+            m_audioSWContext = nullptr;
         }
-        if (m_formatcontext)
+
+        if (m_formatContext)
         {
-            avformat_close_input(&m_formatcontext);
-            m_formatcontext = nullptr;
+            avformat_close_input(&m_formatContext);
+            m_formatContext = nullptr;
         }
     }
 
     bool DataSource::LoadFromFile(const std::string& Filename, bool EnableVideo, bool EnableAudio)
     {
         Cleanup();
-        if (avformat_open_input(&m_formatcontext, Filename.c_str(), nullptr, nullptr) != 0)
+
+        if (avformat_open_input(&m_formatContext, Filename.c_str(), nullptr, nullptr) != 0)
         {
             std::cout << "Motion: Failed to open file: '" << Filename << "'" << std::endl;
             return false;
         }
-        if (avformat_find_stream_info(m_formatcontext, nullptr) < 0)
+
+        if (avformat_find_stream_info(m_formatContext, nullptr) < 0)
         {
             std::cout << "Motion: Failed to find stream information" << std::endl;
             return false;
         }
-        for (unsigned int i = 0; i < m_formatcontext->nb_streams; i++)
+
+        for (unsigned int i = 0; i < m_formatContext->nb_streams; i++)
         {
-            switch (m_formatcontext->streams[i]->codec->codec_type)
+            switch (m_formatContext->streams[i]->codec->codec_type)
             {
                 case AVMEDIA_TYPE_VIDEO:
-                    if (m_videostreamid == -1 && EnableVideo) m_videostreamid = i;
+                    if (m_videoStreamID == -1 && EnableVideo) m_videoStreamID = i;
                     break;
+
                 case AVMEDIA_TYPE_AUDIO:
-                    if (m_audiostreamid == -1 && EnableAudio) m_audiostreamid = i;
+                    if (m_audioStreamID == -1 && EnableAudio) m_audioStreamID = i;
                     break;
+
                 default:
                     break;
             }
         }
+
         if (HasVideo())
         {
-            m_videocontext = m_formatcontext->streams[m_videostreamid]->codec;
-            if (!m_videocontext)
+            m_videoContext = m_formatContext->streams[m_videoStreamID]->codec;
+
+            if (!m_videoContext)
             {
                 std::cout << "Motion: Failed to get video codec context" << std::endl;
-                m_videostreamid = -1;
+                m_videoStreamID = -1;
             }
             else
             {
-                m_videocodec = avcodec_find_decoder(m_videocontext->codec_id);
-                if (!m_videocodec)
+                m_videoCodec = avcodec_find_decoder(m_videoContext->codec_id);
+
+                if (!m_videoCodec)
                 {
                     std::cout << "Motion: Failed to find video codec" << std::endl;
-                    m_videostreamid = -1;
+                    m_videoStreamID = -1;
                 }
                 else
                 {
-                    if (avcodec_open2(m_videocontext, m_videocodec, nullptr) != 0)
+                    if (avcodec_open2(m_videoContext, m_videoCodec, nullptr) != 0)
                     {
                         std::cout << "Motion: Failed to load video codec" << std::endl;
-                        m_videostreamid = -1;
+                        m_videoStreamID = -1;
                     }
                     else
                     {
-                        m_videosize = sf::Vector2i(m_videocontext->width, m_videocontext->height);
-                        m_videorawframe = CreatePictureFrame(m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, m_videorawbuffer);
-                        m_videorgbaframe = CreatePictureFrame(AVPixelFormat::AV_PIX_FMT_BGRA, m_videosize.x, m_videosize.y, m_videorgbabuffer);
-                        if (!m_videorawframe || !m_videorgbaframe)
+                        m_videoSize = sf::Vector2i(m_videoContext->width, m_videoContext->height);
+                        m_videoRawFrame = CreatePictureFrame(m_videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, m_videoRawBuffer);
+                        m_videoRGBAFrame = CreatePictureFrame(AVPixelFormat::AV_PIX_FMT_BGRA, m_videoSize.x, m_videoSize.y, m_videoRGBABuffer);
+
+                        if (!m_videoRawFrame || !m_videoRGBAFrame)
                         {
                             std::cout << "Motion: Failed to create video frames" << std::endl;
-                            m_videostreamid = -1;
+                            m_videoStreamID = -1;
                         }
                         else
                         {
                             int swapmode = SWS_FAST_BILINEAR;
-                            if (m_videosize.x * m_videosize.y <= 500000 && m_videosize.x % 8 != 0) swapmode |= SWS_ACCURATE_RND;
-                            m_videoswcontext = sws_getCachedContext(nullptr, m_videosize.x, m_videosize.y, m_videocontext->pix_fmt, m_videosize.x, m_videosize.y, AVPixelFormat::AV_PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
+                            if (m_videoSize.x * m_videoSize.y <= 500000 && m_videoSize.x % 8 != 0) swapmode |= SWS_ACCURATE_RND;
+                            m_videoSWContext = sws_getCachedContext(nullptr, m_videoSize.x, m_videoSize.y, m_videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, AVPixelFormat::AV_PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
                         }
                     }
                 }
             }
         }
+
         if (HasAudio())
         {
-            m_audiocontext = m_formatcontext->streams[m_audiostreamid]->codec;
-            if (!m_audiocontext)
+            m_audioContext = m_formatContext->streams[m_audioStreamID]->codec;
+
+            if (!m_audioContext)
             {
                 std::cout << "Motion: Failed to get audio codec context" << std::endl;
-                m_audiostreamid = -1;
+                m_audioStreamID = -1;
             }
             else
             {
-                m_audiocodec = avcodec_find_decoder(m_audiocontext->codec_id);
-                if (!m_audiocodec)
+                m_audioCodec = avcodec_find_decoder(m_audioContext->codec_id);
+
+                if (!m_audioCodec)
                 {
                     std::cout << "Motion: Failed to find audio codec" << std::endl;
-                    m_audiostreamid = -1;
+                    m_audioStreamID = -1;
                 }
                 else
                 {
-                    if (avcodec_open2(m_audiocontext, m_audiocodec, nullptr) != 0)
+                    if (avcodec_open2(m_audioContext, m_audioCodec, nullptr) != 0)
                     {
-                        std::cout << "Motion: Failed to load video codec" << std::endl;
-                        m_audiostreamid = -1;
+                        std::cout << "Motion: Failed to load audio codec" << std::endl;
+                        m_audioStreamID = -1;
                     }
                     else
                     {
-                        m_audiorawbuffer = av_frame_alloc();
-                        if (!m_audiorawbuffer)
+                        m_audioRawBuffer = av_frame_alloc();
+
+                        if (!m_audioRawBuffer)
                         {
                             std::cout << "Motion: Failed to allocate audio buffer" << std::endl;
-                            m_audiostreamid = -1;
+                            m_audioStreamID = -1;
                         }
                         else
                         {
-                            if (av_samples_alloc(&m_audiopcmbuffer, nullptr, m_audiocontext->channels, av_samples_get_buffer_size(nullptr, m_audiocontext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0)
+                            if (av_samples_alloc(&m_audioPCMBuffer, nullptr, m_audioContext->channels, av_samples_get_buffer_size(nullptr, m_audioContext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0)
                             {
                                 std::cout << "Motion: Failed to create audio samples buffer" << std::endl;
-                                m_audiostreamid = -1;
+                                m_audioStreamID = -1;
                             }
                             else
                             {
-                                av_frame_unref(m_audiorawbuffer);
-                                m_audioswcontext = swr_alloc();
-                                uint64_t inchanlayout = m_audiocontext->channel_layout;
-                                if (inchanlayout == 0) inchanlayout = av_get_default_channel_layout(m_audiocontext->channels);
+                                av_frame_unref(m_audioRawBuffer);
+
+                                uint64_t inchanlayout = m_audioContext->channel_layout;
                                 uint64_t outchanlayout = inchanlayout;
-                                if (outchanlayout != AV_CH_LAYOUT_MONO) outchanlayout = AV_CH_LAYOUT_STEREO;
-                                av_opt_set_int(m_audioswcontext, "in_channel_layout", inchanlayout, 0);
-                                av_opt_set_int(m_audioswcontext, "out_channel_layout", outchanlayout, 0);
-                                av_opt_set_int(m_audioswcontext, "in_sample_rate", m_audiocontext->sample_rate, 0);
-                                av_opt_set_int(m_audioswcontext, "out_sample_rate", m_audiocontext->sample_rate, 0);
-                                av_opt_set_sample_fmt(m_audioswcontext, "in_sample_fmt", m_audiocontext->sample_fmt, 0);
-                                av_opt_set_sample_fmt(m_audioswcontext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-                                swr_init(m_audioswcontext);
-                                m_audiochannelcount = av_get_channel_layout_nb_channels(outchanlayout);
+
+                                if (inchanlayout == 0)
+                                    inchanlayout = av_get_default_channel_layout(m_audioContext->channels);
+
+                                if (outchanlayout != AV_CH_LAYOUT_MONO)
+                                    outchanlayout = AV_CH_LAYOUT_STEREO;
+
+                                m_audioSWContext = swr_alloc();
+
+                                av_opt_set_int(m_audioSWContext, "in_channel_layout", inchanlayout, 0);
+                                av_opt_set_int(m_audioSWContext, "out_channel_layout", outchanlayout, 0);
+                                av_opt_set_int(m_audioSWContext, "in_sample_rate", m_audioContext->sample_rate, 0);
+                                av_opt_set_int(m_audioSWContext, "out_sample_rate", m_audioContext->sample_rate, 0);
+                                av_opt_set_sample_fmt(m_audioSWContext, "in_sample_fmt", m_audioContext->sample_fmt, 0);
+                                av_opt_set_sample_fmt(m_audioSWContext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+
+                                swr_init(m_audioSWContext);
+
+                                m_audioChannelCount = av_get_channel_layout_nb_channels(outchanlayout);
                             }
                         }
                     }
                 }
             }
         }
-        if (m_formatcontext->duration != AV_NOPTS_VALUE) m_filelength = sf::milliseconds(static_cast<int>(m_formatcontext->duration) / 1000);
+
+        if (m_formatContext->duration != AV_NOPTS_VALUE)
+            m_fileLength = sf::milliseconds(static_cast<int>(m_formatContext->duration) / 1000);
+
         if (HasVideo() || HasAudio())
         {
+            SetPlayingOffset(sf::Time::Zero);
             StartDecodeThread();
-            sf::Lock lock(m_playbacklock);
-            for (auto& videoplayback : m_videoplaybacks)
+
+            sf::Lock lock(m_playbackMutex);
+
+            for (auto& videoplayback : m_videoPlaybacks)
             {
                 videoplayback->SourceReloaded();
             }
-            for (auto& audioplayback : m_audioplaybacks)
+
+            for (auto& audioplayback : m_audioPlaybacks)
             {
                 audioplayback->SourceReloaded();
             }
+
             return true;
         }
         else
         {
             std::cout << "Motion: Failed to load audio or video" << std::endl;
             Cleanup();
+
             return false;
         }
     }
 
-    const bool DataSource::HasVideo()
+    bool DataSource::HasVideo() const
     {
-        return m_videostreamid != -1;
+        return m_videoStreamID != -1;
     }
 
-    const bool DataSource::HasAudio()
+    bool DataSource::HasAudio() const
     {
-        return m_audiostreamid != -1;
+        return m_audioStreamID != -1;
     }
 
-    const sf::Vector2i DataSource::GetVideoSize()
+    sf::Vector2i DataSource::GetVideoSize() const
     {
-        return m_videosize;
+        return m_videoSize;
     }
 
-    const State DataSource::GetState()
+    State DataSource::GetState() const
     {
         return m_state;
     }
 
-    const sf::Time DataSource::GetVideoFrameTime()
+    sf::Time DataSource::GetVideoFrameTime() const
     {
-        if (!HasVideo()) return sf::Time::Zero;
-        AVRational r1 = m_formatcontext->streams[m_videostreamid]->avg_frame_rate;
-        AVRational r2 = m_formatcontext->streams[m_videostreamid]->r_frame_rate;
+        if (!HasVideo())
+            return sf::Time::Zero;
+
+        AVRational r1 = m_formatContext->streams[m_videoStreamID]->avg_frame_rate;
+        AVRational r2 = m_formatContext->streams[m_videoStreamID]->r_frame_rate;
+
         if ((!r1.num || !r1.den) && (!r2.num || !r2.den))
-        {
             return sf::seconds(1.0f / 29.97f);
-        }
         else
         {
             if (r2.num && r1.den)
-            {
                 return sf::seconds(1.0f / ((float)r1.num / (float)r1.den));
-            }
             else
-            {
                 return sf::seconds(1.0f / ((float)r2.num / (float)r2.den));
-            }
         }
     }
 
-    const int DataSource::GetAudioChannelCount()
+    int DataSource::GetAudioChannelCount() const
     {
-        return m_audiochannelcount;
+        return m_audioChannelCount;
     }
 
-    const int DataSource::GetAudioSampleRate()
+    int DataSource::GetAudioSampleRate() const
     {
-        if (!HasAudio()) return -1;
-        return m_audiocontext->sample_rate;
+        if (!HasAudio())
+            return -1;
+
+        return m_audioContext->sample_rate;
     }
 
     void DataSource::Play()
     {
         if ((HasVideo() || HasAudio()) && m_state != State::Playing)
         {
-            m_eofreached = false;
-            m_updateclock.restart();
+            m_EOFReached = false;
+
+            m_updateClock.restart();
+
             NotifyStateChanged(State::Playing);
-            m_state = State::Playing;
         }
     }
 
     void DataSource::Pause()
     {
         if (m_state == State::Playing)
-        {
             NotifyStateChanged(State::Paused);
-            m_state = State::Paused;
-        }
     }
 
     void DataSource::Stop()
     {
         if (m_state != State::Stopped)
         {
-            m_eofreached = true;
             NotifyStateChanged(State::Stopped);
-            m_state = State::Stopped;
-            m_eofreached = false;
             SetPlayingOffset(sf::Time::Zero);
         }
     }
 
-    const sf::Time DataSource::GetFileLength()
+    sf::Time DataSource::GetFileLength() const
     {
-        return m_filelength;
+        return m_fileLength;
     }
 
-    const sf::Time DataSource::GetPlayingOffset()
+    sf::Time DataSource::GetPlayingOffset() const
     {
-        return m_playingoffset;
+        return m_playingOffset;
     }
 
     void DataSource::SetPlayingOffset(sf::Time PlayingOffset)
     {
         if (HasVideo() || HasAudio())
         {
-            StopDecodeThread();
-            m_playingoffset = PlayingOffset;
-            m_playingtoeof = false;
+            bool startThread = m_shouldThreadRun;
+
+            if (startThread)
+                StopDecodeThread();
+
+            m_playingOffset = PlayingOffset;
+            m_PlayingToEOF = false;
+
             bool startplaying = m_state == State::Playing;
+
             if (m_state != State::Stopped)
-            {
-                m_eofreached = true;
                 NotifyStateChanged(State::Stopped);
-                m_state = State::Stopped;
-                m_eofreached = false;
-            }
-            if (HasVideo())
-            {
-                AVRational timebase = m_formatcontext->streams[m_videostreamid]->time_base;
-                float ftb = (float)timebase.den / (float)timebase.num;
-                int64_t pos = static_cast<int64_t>(PlayingOffset.asSeconds() * ftb);
-                av_seek_frame(m_formatcontext, m_videostreamid, pos, AVSEEK_FLAG_ANY);
-                avcodec_flush_buffers(m_videocontext);
-            }
+
+            int64_t seekTarget = static_cast<int64_t>(PlayingOffset.asSeconds() * static_cast<float>(AV_TIME_BASE));
+
             if (HasAudio())
             {
-                AVRational timebase = m_formatcontext->streams[m_audiostreamid]->time_base;
-                float ftb = (float)timebase.den / (float)timebase.num;
-                int64_t pos = static_cast<int64_t>(PlayingOffset.asSeconds() * ftb);
-                av_seek_frame(m_formatcontext, m_audiostreamid, pos, AVSEEK_FLAG_ANY);
-                avcodec_flush_buffers(m_audiocontext);
+                AVRational timebase = m_formatContext->streams[m_audioStreamID]->time_base;
+
+                if (timebase.den != 0)
+                    seekTarget = av_rescale_q(seekTarget, TIME_BASE_Q, timebase);
+
+                avformat_seek_file(m_formatContext, m_audioStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
             }
-            StartDecodeThread();
-            if (startplaying) Play();
+            else if (HasVideo())
+            {
+                AVRational timebase = m_formatContext->streams[m_videoStreamID]->time_base;
+
+                if (timebase.den != 0)
+                    seekTarget = av_rescale_q(seekTarget, TIME_BASE_Q, timebase);
+
+                avformat_seek_file(m_formatContext, m_videoStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
+            }
+
+            if (HasAudio())
+                avcodec_flush_buffers(m_audioContext);
+
+            if (HasVideo())
+                avcodec_flush_buffers(m_videoContext);
+
+            if (startThread)
+                StartDecodeThread();
+
+            if (startplaying)
+                Play();
         }
     }
 
     void DataSource::NotifyStateChanged(State NewState)
     {
-        sf::Lock lock(m_playbacklock);
-        for (auto& videoplayback : m_videoplaybacks)
+        sf::Lock lock(m_playbackMutex);
+
+        if (NewState == State::Stopped)
+            m_EOFReached = true;
+
+        for (auto& videoplayback : m_videoPlaybacks)
         {
             videoplayback->StateChanged(m_state, NewState);
         }
-        for (auto& audioplayback : m_audioplaybacks)
+
+        for (auto& audioplayback : m_audioPlaybacks)
         {
             audioplayback->StateChanged(m_state, NewState);
         }
+
+        if (NewState == State::Stopped)
+            m_EOFReached = false;
+
+        m_state = NewState;
     }
 
     void DataSource::Update()
     {
-        if (m_playingoffset > m_filelength)
+        if (m_playingOffset > m_fileLength)
         {
             Stop();
-            m_eofreached = true;
+            m_EOFReached = true;
         }
-        sf::Time deltatime = m_updateclock.restart() * m_playbackspeed;
-        if (m_state == State::Playing) m_playingoffset += deltatime;
-        sf::Lock lock(m_playbacklock);
-        for (auto& videoplayback : m_videoplaybacks)
+
+        sf::Time deltatime = m_updateClock.restart() * m_playbackSpeed;
+
+        if (m_state == State::Playing)
+            m_playingOffset += deltatime;
+
+        sf::Lock lock(m_playbackMutex);
+
+        for (auto& videoplayback : m_videoPlaybacks)
         {
             videoplayback->Update(deltatime);
         }
+
+        for (auto& audioplayback : m_audioPlaybacks)
+        {
+            audioplayback->Update(deltatime);
+        }
     }
 
-    const float DataSource::GetPlaybackSpeed()
+    float DataSource::GetPlaybackSpeed() const
     {
-        return m_playbackspeed;
+        return m_playbackSpeed;
     }
 
     void DataSource::SetPlaybackSpeed(float PlaybackSpeed)
     {
-        m_playbackspeed = PlaybackSpeed;
-        sf::Lock lock(m_playbacklock);
-        for (auto& audioplayback : m_audioplaybacks)
+        m_playbackSpeed = PlaybackSpeed;
+
+        sf::Lock lock(m_playbackMutex);
+
+        for (auto& audioplayback : m_audioPlaybacks)
         {
-            audioplayback->setPitch(PlaybackSpeed);
+            audioplayback->SetPlaybackSpeed(PlaybackSpeed);
         }
     }
 
     void DataSource::StartDecodeThread()
     {
-        if (m_shouldthreadrun) return;
-        m_shouldthreadrun = true;
-        m_decodethread.reset(new std::thread(&DataSource::DecodeThreadRun, this));
+        if (m_shouldThreadRun)
+            return;
+
+        m_shouldThreadRun = true;
+
+        m_decodeThread.reset(new std::thread(&DataSource::DecodeThreadRun, this));
     }
 
     void DataSource::StopDecodeThread()
     {
-        if (!m_shouldthreadrun) return;
-        m_shouldthreadrun = false;
-        if (m_decodethread->joinable()) m_decodethread->join();
-        m_decodethread.reset(nullptr);
+        if (!m_shouldThreadRun)
+            return;
+
+        m_shouldThreadRun = false;
+
+        if (m_decodeThread->joinable())
+            m_decodeThread->join();
+
+        m_decodeThread.reset(nullptr);
     }
 
     void DataSource::DecodeThreadRun()
     {
-        while (m_shouldthreadrun)
+        while (m_shouldThreadRun)
         {
             bool isfull = IsFull();
-            while (!isfull && m_shouldthreadrun && !m_playingtoeof)
+
+            while (!isfull && m_shouldThreadRun && !m_PlayingToEOF)
             {
                 bool validpacket = false;
-                while (!validpacket && m_shouldthreadrun)
+
+                while (!validpacket && m_shouldThreadRun)
                 {
-                    AVPacket* packet;
-                    packet = (AVPacket*)av_malloc(sizeof(*packet));
+                    AVPacket* packet = (AVPacket*)av_malloc(sizeof(*packet));
+
                     av_init_packet(packet);
-                    if (av_read_frame(m_formatcontext, packet) == 0)
+
+                    if (av_read_frame(m_formatContext, packet) == 0)
                     {
-                        if (packet->stream_index == m_videostreamid)
+                        if (packet->stream_index == m_videoStreamID)
                         {
                             int decoderesult = 0;
-                            if (avcodec_decode_video2(m_videocontext, m_videorawframe, &decoderesult, packet) >= 0)
+
+                            if (avcodec_decode_video2(m_videoContext, m_videoRawFrame, &decoderesult, packet) >= 0)
                             {
                                 if (decoderesult)
                                 {
-                                    if (sws_scale(m_videoswcontext, m_videorawframe->data, m_videorawframe->linesize, 0, m_videocontext->height, m_videorgbaframe->data, m_videorgbaframe->linesize))
+                                    if (sws_scale(m_videoSWContext, m_videoRawFrame->data, m_videoRawFrame->linesize, 0, m_videoContext->height, m_videoRGBAFrame->data, m_videoRGBAFrame->linesize))
                                     {
                                         validpacket = true;
-                                        priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videorgbaframe->data[0], m_videosize.x, m_videosize.y));
+
+                                        priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videoRGBAFrame->data[0], m_videoSize.x, m_videoSize.y));
                                         {
-                                            sf::Lock lock(m_playbacklock);
-                                            for (auto& videoplayback : m_videoplaybacks)
+                                            sf::Lock lock(m_playbackMutex);
+
+                                            for (auto& videoplayback : m_videoPlaybacks)
                                             {
-                                                sf::Lock playbacklock(videoplayback->m_protectionlock);
-                                                videoplayback->m_queuedvideopackets.push(packet);
+                                                sf::Lock playbacklock(videoplayback->m_protectionMutex);
+
+                                                videoplayback->m_queuedVideoPackets.push(packet);
                                             }
                                         }
+
                                         isfull = IsFull();
                                     }
                                 }
                             }
                         }
-                        else if (packet->stream_index == m_audiostreamid)
+                        else if (packet->stream_index == m_audioStreamID)
                         {
                             int decoderesult = 0;
-                            if (avcodec_decode_audio4(m_audiocontext, m_audiorawbuffer, &decoderesult, packet) > 0)
+
+                            if (avcodec_decode_audio4(m_audioContext, m_audioRawBuffer, &decoderesult, packet) > 0)
                             {
                                 if (decoderesult)
                                 {
-                                    int convertlength = swr_convert(m_audioswcontext, &m_audiopcmbuffer, m_audiorawbuffer->nb_samples, (const uint8_t**)m_audiorawbuffer->extended_data, m_audiorawbuffer->nb_samples);
+                                    int convertlength = swr_convert(m_audioSWContext, &m_audioPCMBuffer, m_audioRawBuffer->nb_samples, (const uint8_t**)m_audioRawBuffer->extended_data, m_audioRawBuffer->nb_samples);
+
                                     if (convertlength > 0)
                                     {
                                         validpacket = true;
-                                        priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audiopcmbuffer, convertlength, m_audiochannelcount));
+
+                                        priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audioPCMBuffer, convertlength, m_audioChannelCount));
                                         {
-                                            sf::Lock lock(m_playbacklock);
-                                            for (auto& audioplayback : m_audioplaybacks)
+                                            sf::Lock lock(m_playbackMutex);
+
+                                            for (auto& audioplayback : m_audioPlaybacks)
                                             {
-                                                sf::Lock playbacklock(audioplayback->m_protectionlock);
-                                                audioplayback->m_queuedaudiopackets.push(packet);
+                                                sf::Lock playbacklock(audioplayback->m_protectionMutex);
+
+                                                audioplayback->m_queuedAudioPackets.push(packet);
                                             }
                                         }
+
                                         isfull = IsFull();
                                     }
                                 }
                             }
                         }
+
                         av_free_packet(packet);
                         av_free(packet);
                     }
                     else
                     {
-                        m_playingtoeof = true;
+                        m_PlayingToEOF = true;
                         validpacket = true;
+
                         av_free_packet(packet);
                         av_free(packet);
                     }
                 }
             }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
 
     bool DataSource::IsFull()
     {
-        sf::Lock lock(m_playbacklock);
+        sf::Lock lock(m_playbackMutex);
+
         if (HasVideo())
         {
-            for (auto& videoplayback : m_videoplaybacks)
+            for (auto& videoplayback : m_videoPlaybacks)
             {
-                sf::Lock playbacklock(videoplayback->m_protectionlock);
-                if (videoplayback->m_queuedvideopackets.size() < PACKET_QUEUE_AMOUNT)
-                {
+                sf::Lock playbacklock(videoplayback->m_protectionMutex);
+
+                if (videoplayback->m_queuedVideoPackets.size() < PACKET_QUEUE_AMOUNT)
                     return false;
-                }
             }
         }
         else if (HasAudio())
         {
-            for (auto& audioplayback : m_audioplaybacks)
+            for (auto& audioplayback : m_audioPlaybacks)
             {
-                sf::Lock playbacklock(audioplayback->m_protectionlock);
-                if (audioplayback->m_queuedaudiopackets.size() < PACKET_QUEUE_AMOUNT)
-                {
+                sf::Lock playbacklock(audioplayback->m_protectionMutex);
+
+                if (audioplayback->m_queuedAudioPackets.size() < PACKET_QUEUE_AMOUNT)
                     return false;
-                }
             }
         }
+
         return true;
     }
 
     AVFrame* DataSource::CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
     {
-        AVFrame *picture;
-        picture = av_frame_alloc();
-        if (!picture) return nullptr;
+        AVFrame* picture = av_frame_alloc();
+
+        if (!picture)
+            return nullptr;
+
         int size = avpicture_get_size(SelectedPixelFormat, Width, Height);
+
         PictureBuffer = (uint8_t*)av_malloc(size);
+
         if (!PictureBuffer)
         {
             av_frame_free(&picture);
             return nullptr;
         }
+
         avpicture_fill((AVPicture*)picture, PictureBuffer, SelectedPixelFormat, Width, Height);
+
         return picture;
     }
 
@@ -591,13 +699,14 @@ namespace mt
     {
         av_free(PictureBuffer);
         av_frame_free(&PictureFrame);
+
         PictureBuffer = nullptr;
         PictureFrame = nullptr;
     }
 
-    const bool DataSource::IsEndofFileReached()
+    bool DataSource::IsEndofFileReached() const
     {
-        return m_eofreached;
+        return m_EOFReached;
     }
 }
 
@@ -605,6 +714,7 @@ mtDataSource* mtDataSource_Create(void)
 {
     mtDataSource* datasource = new mtDataSource();
     datasource->Value = new mt::DataSource();
+
     return datasource;
 }
 
@@ -647,9 +757,11 @@ sfBool mtDataSource_HasAudio(mtDataSource* DataSource)
 sfVector2i mtDataSource_GetVideoSize(mtDataSource* DataSource)
 {
     sf::Vector2i size = DataSource->Value->GetVideoSize();
+
     sfVector2i retval;
     retval.x = size.x;
     retval.y = size.y;
+
     return retval;
 }
 
@@ -661,7 +773,9 @@ mtState mtDataSource_GetState(mtDataSource* DataSource)
 sfTime mtDataSource_GetVideoFrameTime(mtDataSource* DataSource)
 {
     sfTime retval;
+
     retval.microseconds = DataSource->Value->GetVideoFrameTime().asMicroseconds();
+
     return retval;
 }
 
@@ -678,14 +792,18 @@ int mtDataSource_GetAudioSampleRate(mtDataSource* DataSource)
 sfTime mtDataSource_GetFileLength(mtDataSource* DataSource)
 {
     sfTime retval;
+
     retval.microseconds = DataSource->Value->GetFileLength().asMicroseconds();
+
     return retval;
 }
 
 sfTime mtDataSource_GetPlayingOffset(mtDataSource* DataSource)
 {
     sfTime retval;
+
     retval.microseconds = DataSource->Value->GetPlayingOffset().asMicroseconds();
+
     return retval;
 }
 

@@ -7,11 +7,18 @@ namespace mt
 {
     namespace priv
     {
+        AudioPacket::AudioPacket(std::size_t SampleCount, std::size_t ChannelCount) :
+            m_samples(new int16_t[SampleCount * ChannelCount]),
+            m_sampleBufferLength(SampleCount * ChannelCount)
+        {
+            std::memset(m_samples, 0, sizeof(uint16_t) * m_sampleBufferLength);
+        }
+
         AudioPacket::AudioPacket(void* SamplesSource, std::size_t SampleCount, std::size_t ChannelCount) :
             m_samples(new int16_t[SampleCount * ChannelCount]),
-            m_samplebufferlength(SampleCount * ChannelCount)
+            m_sampleBufferLength(SampleCount * ChannelCount)
         {
-            std::memcpy(m_samples, SamplesSource, sizeof(uint16_t)* SampleCount * ChannelCount);
+            std::memcpy(m_samples, SamplesSource, sizeof(uint16_t) * m_sampleBufferLength);
         }
 
         AudioPacket::~AudioPacket()
@@ -26,7 +33,7 @@ namespace mt
 
         const std::size_t AudioPacket::GetSamplesBufferLength()
         {
-            return m_samplebufferlength;
+            return m_sampleBufferLength;
         }
     }
 }

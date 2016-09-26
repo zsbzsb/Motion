@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MotionNET
+﻿namespace MotionNET
 {
     public enum State
     {

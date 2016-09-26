@@ -6,15 +6,6 @@
 #include <memory>
 #include <cstring>
 
-extern "C"
-{
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-#include <libswresample/swresample.h>
-#include <libavutil/opt.h>
-}
-
 namespace mt
 {
     namespace priv
@@ -22,7 +13,8 @@ namespace mt
         class VideoPacket
         {
         private:
-            uint8_t* m_rgbabuffer;
+            uint8_t* m_rgbaBuffer;
+
         public:
             VideoPacket(uint8_t* RGBABufferSource, int Width, int Height);
             ~VideoPacket();
