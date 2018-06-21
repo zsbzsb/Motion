@@ -202,7 +202,7 @@ namespace mt
                 {
                     if (avcodec_open2(m_audiocontext, m_audiocodec, nullptr) != 0)
                     {
-                        std::cout << "Motion: Failed to load video codec" << std::endl;
+                        std::cout << "Motion: Failed to load audio codec" << std::endl;
                         m_audiostreamid = -1;
                     }
                     else
