@@ -22,8 +22,29 @@ if(MOTION_OS_WINDOWS)
         add_definitions(-DSFML_STATIC)
     endif()
 endif()
+
 find_package(SFML 2.5 COMPONENTS system window graphics audio REQUIRED)
 include_directories(${SFML_INCLUDE_DIR})
+
+#find FFMPEG
+motion_set_option(FFMPEG_ROOT "" PATH "FFMPEG Root Directory")
+
+find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h PATHS ${FFMPEG_ROOT}/include)
+find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_ROOT}/lib)
+
+find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h PATHS ${FFMPEG_ROOT}/include)
+find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_ROOT}/lib)
+
+find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h PATHS ${FFMPEG_ROOT}/include)
+find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_ROOT}/lib)
+
+find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h PATHS ${FFMPEG_ROOT}/include)
+find_library(SWSCALE_LIBRARY swscale PATHS ${FFMPEG_ROOT}/lib)
+
+find_path(SWRESAMPLE_INCLUDE_DIR libswresample/swresample.h PATHS ${FFMPEG_ROOT}/include)
+find_library(SWRESAMPLE_LIBRARY swresample PATHS ${FFMPEG_ROOT}/lib)
+
+include_directories(${AVUTIL_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVCODEC_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR} ${SWRESAMPLE_INCLUDE_DIR})
 
 set(INCROOT ${CMAKE_SOURCE_DIR}/include/Motion)
 set(SRCROOT ${CMAKE_SOURCE_DIR}/src/Motion)
@@ -58,20 +79,7 @@ set(SRC
 # define the motion target
 motion_add_library(Motion
                   SOURCES ${SRC}
-                  DEPENDS sfml-graphics sfml-window sfml-system sfml-audio)
-
-
-# include FFMPEG
-motion_set_option(FFMPEG_INCLUDE_DIR "FFMPEG_INCLUDE_DIR Not Found" PATH "FFMPEG Include Directory")
-motion_set_option(FFMPEG_LIBRARY_DIR "FFMPEG_LIBRARY_DIR Not Found" PATH "FFMPEG Library Directory")
-motion_set_option(FFMPEG_AVUTIL_LIB "avutil.lib" STRING "avutil")
-motion_set_option(FFMPEG_AVFORMAT_LIB "avformat.lib" STRING "avformat")
-motion_set_option(FFMPEG_AVCODEC_LIB "avcodec.lib" STRING "avcodec")
-motion_set_option(FFMPEG_SWSCALE_LIB "swscale.lib" STRING "swscale")
-motion_set_option(FFMPEG_SWRESAMPLE_LIB "swresample.lib" STRING "swresample")
-
-include_directories(${FFMPEG_INCLUDE_DIR})
-target_link_libraries(Motion ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVUTIL_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVFORMAT_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_AVCODEC_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWSCALE_LIB} ${FFMPEG_LIBRARY_DIR}/${FFMPEG_SWRESAMPLE_LIB})
+                  DEPENDS sfml-graphics sfml-window sfml-system sfml-audio ${AVUTIL_LIBRARY} ${AVFORMAT_LIBRARY} ${AVCODEC_LIBRARY} ${SWSCALE_LIBRARY} ${SWRESAMPLE_LIBRARY})
 
 if(MOTION_OS_WINDOWS)
     target_link_libraries(Motion legacy_stdio_definitions.lib)
