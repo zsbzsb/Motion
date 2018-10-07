@@ -1,7 +1,7 @@
-## Motion
+## Motion Project
 
 ### License
-Motion -- This software is provided 'as-is' without any express or implied warranty. Read the full license agreement in "license.txt".
+This software is provided 'as-is' without any express or implied warranty. Read the full license agreement in "license.txt".
 
 
 ### Author
