@@ -4,6 +4,15 @@
 #include <Motion/DataSource.h>
 #include <Motion/DataSource.hpp>
 
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
+#include <libavutil/opt.h>
+}
+
 constexpr std::size_t MAX_AUDIO_SAMPLES = 192000;
 constexpr std::size_t PACKET_QUEUE_AMOUNT = 5;
 constexpr AVRational TIME_BASE_Q = { 1, AV_TIME_BASE };
@@ -16,8 +25,80 @@ extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
 
 #endif
 
+namespace
+{
+    static AVFrame* CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
+    {
+        AVFrame* picture = av_frame_alloc();
+
+        if (!picture)
+            return nullptr;
+
+        int size = avpicture_get_size(SelectedPixelFormat, Width, Height);
+
+        PictureBuffer = (uint8_t*)av_malloc(size);
+
+        if (!PictureBuffer)
+        {
+            av_frame_free(&picture);
+            return nullptr;
+        }
+
+        avpicture_fill((AVPicture*)picture, PictureBuffer, SelectedPixelFormat, Width, Height);
+
+        return picture;
+    }
+
+    static void DestroyPictureFrame(AVFrame*& PictureFrame, uint8_t*& PictureBuffer)
+    {
+        av_free(PictureBuffer);
+        av_frame_free(&PictureFrame);
+
+        PictureBuffer = nullptr;
+        PictureFrame = nullptr;
+    }
+}
+
 namespace mt
 {
+    struct DataSource::DecodeData
+    {
+        int videoStreamID;
+        int audioStreamID;
+        AVFormatContext* formatContext;
+        AVCodecContext* videoContext;
+        AVCodecContext* audioContext;
+        AVCodec* videoCodec;
+        AVCodec* audioCodec;
+        AVFrame* videoRawFrame;
+        AVFrame* videoRGBAFrame;
+        AVFrame* audioRawBuffer;
+        uint8_t* videoRawBuffer;
+        uint8_t* videoRGBABuffer;
+        uint8_t* audioPCMBuffer;
+        SwsContext* videoSWContext;
+        SwrContext* audioSWContext;
+
+        DecodeData() :
+            videoStreamID(-1),
+            audioStreamID(-1),
+            formatContext(nullptr),
+            videoContext(nullptr),
+            audioContext(nullptr),
+            videoCodec(nullptr),
+            audioCodec(nullptr),
+            videoRawFrame(nullptr),
+            videoRGBAFrame(nullptr),
+            audioRawBuffer(nullptr),
+            videoRawBuffer(nullptr),
+            videoRGBABuffer(nullptr),
+            audioPCMBuffer(nullptr),
+            videoSWContext(nullptr),
+            audioSWContext(nullptr)
+        { }
+    };
+
+
     DataSource::DataSource() :
         m_updateClock(),
         m_playingOffset(),
@@ -25,21 +106,7 @@ namespace mt
         m_videoSize(-1, -1),
         m_audioChannelCount(-1),
         m_playbackSpeed(1),
-        m_videoStreamID(-1),
-        m_audioStreamID(-1),
-        m_formatContext(nullptr),
-        m_videoContext(nullptr),
-        m_audioContext(nullptr),
-        m_videoCodec(nullptr),
-        m_audioCodec(nullptr),
-        m_videoRawFrame(nullptr),
-        m_videoRGBAFrame(nullptr),
-        m_audioRawBuffer(nullptr),
-        m_videoRawBuffer(nullptr),
-        m_videoRGBABuffer(nullptr),
-        m_audioPCMBuffer(nullptr),
-        m_videoSWContext(nullptr),
-        m_audioSWContext(nullptr),
+        m_data(std::make_unique<DecodeData>()),
         m_state(State::Stopped),
         m_decodeThread(nullptr),
         m_shouldThreadRun(false),
@@ -55,20 +122,19 @@ namespace mt
     DataSource::~DataSource()
     {
         Cleanup();
+
+        sf::Lock lock(m_playbackMutex);
+
+        while (m_videoPlaybacks.size() > 0)
         {
-            sf::Lock lock(m_playbackMutex);
+            m_videoPlaybacks.back()->m_dataSource = nullptr;
+            m_videoPlaybacks.pop_back();
+        }
 
-            while (m_videoPlaybacks.size() > 0)
-            {
-                m_videoPlaybacks.back()->m_dataSource = nullptr;
-                m_videoPlaybacks.pop_back();
-            }
-
-            while (m_audioPlaybacks.size() > 0)
-            {
-                m_audioPlaybacks.back()->m_dataSource = nullptr;
-                m_audioPlaybacks.pop_back();
-            }
+        while (m_audioPlaybacks.size() > 0)
+        {
+            m_audioPlaybacks.back()->m_dataSource = nullptr;
+            m_audioPlaybacks.pop_back();
         }
     }
 
@@ -77,60 +143,60 @@ namespace mt
         Stop();
         StopDecodeThread();
 
-        m_videoStreamID = -1;
-        m_audioStreamID = -1;
+        m_data->videoStreamID = -1;
+        m_data->audioStreamID = -1;
         m_playingOffset = sf::Time::Zero;
         m_fileLength = sf::seconds(-1);
         m_videoSize = sf::Vector2i(-1, -1);
         m_audioChannelCount = -1;
 
-        if (m_videoContext)
+        if (m_data->videoContext)
         {
-            avcodec_close(m_videoContext);
-            m_videoContext = nullptr;
+            avcodec_close(m_data->videoContext);
+            m_data->videoContext = nullptr;
         }
 
-        m_videoCodec = nullptr;
+        m_data->videoCodec = nullptr;
 
-        if (m_audioContext)
+        if (m_data->audioContext)
         {
-            avcodec_close(m_audioContext);
-            m_audioContext = nullptr;
+            avcodec_close(m_data->audioContext);
+            m_data->audioContext = nullptr;
         }
 
-        m_audioCodec = nullptr;
+        m_data->audioCodec = nullptr;
 
-        if (m_videoRawFrame) DestroyPictureFrame(m_videoRawFrame, m_videoRawBuffer);
-        if (m_videoRGBAFrame) DestroyPictureFrame(m_videoRGBAFrame, m_videoRGBABuffer);
+        if (m_data->videoRawFrame) DestroyPictureFrame(m_data->videoRawFrame, m_data->videoRawBuffer);
+        if (m_data->videoRGBAFrame) DestroyPictureFrame(m_data->videoRGBAFrame, m_data->videoRGBABuffer);
 
-        if (m_audioRawBuffer)
+        if (m_data->audioRawBuffer)
         {
-            av_frame_free(&m_audioRawBuffer);
-            m_audioRawBuffer = nullptr;
+            av_frame_free(&m_data->audioRawBuffer);
+            m_data->audioRawBuffer = nullptr;
         }
 
-        if (m_audioPCMBuffer)
+        if (m_data->audioPCMBuffer)
         {
-            av_free(m_audioPCMBuffer);
-            m_audioPCMBuffer = nullptr;
+            av_free(m_data->audioPCMBuffer);
+            m_data->audioPCMBuffer = nullptr;
         }
 
-        if (m_videoSWContext)
+        if (m_data->videoSWContext)
         {
-            sws_freeContext(m_videoSWContext);
-            m_videoSWContext = nullptr;
+            sws_freeContext(m_data->videoSWContext);
+            m_data->videoSWContext = nullptr;
         }
 
-        if (m_audioSWContext)
+        if (m_data->audioSWContext)
         {
-            swr_free(&m_audioSWContext);
-            m_audioSWContext = nullptr;
+            swr_free(&m_data->audioSWContext);
+            m_data->audioSWContext = nullptr;
         }
 
-        if (m_formatContext)
+        if (m_data->formatContext)
         {
-            avformat_close_input(&m_formatContext);
-            m_formatContext = nullptr;
+            avformat_close_input(&m_data->formatContext);
+            m_data->formatContext = nullptr;
         }
     }
 
@@ -138,28 +204,30 @@ namespace mt
     {
         Cleanup();
 
-        if (avformat_open_input(&m_formatContext, Filename.c_str(), nullptr, nullptr) != 0)
+        if (avformat_open_input(&m_data->formatContext, Filename.c_str(), nullptr, nullptr) != 0)
         {
             std::cout << "Motion: Failed to open file: '" << Filename << "'" << std::endl;
             return false;
         }
 
-        if (avformat_find_stream_info(m_formatContext, nullptr) < 0)
+        if (avformat_find_stream_info(m_data->formatContext, nullptr) < 0)
         {
             std::cout << "Motion: Failed to find stream information" << std::endl;
             return false;
         }
 
-        for (unsigned int i = 0; i < m_formatContext->nb_streams; i++)
+        for (unsigned int i = 0; i < m_data->formatContext->nb_streams; i++)
         {
-            switch (m_formatContext->streams[i]->codec->codec_type)
+            switch (m_data->formatContext->streams[i]->codec->codec_type)
             {
                 case AVMEDIA_TYPE_VIDEO:
-                    if (m_videoStreamID == -1 && EnableVideo) m_videoStreamID = i;
+                    if (m_data->videoStreamID == -1 && EnableVideo)
+                        m_data->videoStreamID = i;
                     break;
 
                 case AVMEDIA_TYPE_AUDIO:
-                    if (m_audioStreamID == -1 && EnableAudio) m_audioStreamID = i;
+                    if (m_data->audioStreamID == -1 && EnableAudio)
+                        m_data->audioStreamID = i;
                     break;
 
                 default:
@@ -169,45 +237,45 @@ namespace mt
 
         if (HasVideo())
         {
-            m_videoContext = m_formatContext->streams[m_videoStreamID]->codec;
+            m_data->videoContext = m_data->formatContext->streams[m_data->videoStreamID]->codec;
 
-            if (!m_videoContext)
+            if (!m_data->videoContext)
             {
                 std::cout << "Motion: Failed to get video codec context" << std::endl;
-                m_videoStreamID = -1;
+                m_data->videoStreamID = -1;
             }
             else
             {
-                m_videoCodec = avcodec_find_decoder(m_videoContext->codec_id);
+                m_data->videoCodec = avcodec_find_decoder(m_data->videoContext->codec_id);
 
-                if (!m_videoCodec)
+                if (!m_data->videoCodec)
                 {
                     std::cout << "Motion: Failed to find video codec" << std::endl;
-                    m_videoStreamID = -1;
+                    m_data->videoStreamID = -1;
                 }
                 else
                 {
-                    if (avcodec_open2(m_videoContext, m_videoCodec, nullptr) != 0)
+                    if (avcodec_open2(m_data->videoContext, m_data->videoCodec, nullptr) != 0)
                     {
                         std::cout << "Motion: Failed to load video codec" << std::endl;
-                        m_videoStreamID = -1;
+                        m_data->videoStreamID = -1;
                     }
                     else
                     {
-                        m_videoSize = sf::Vector2i(m_videoContext->width, m_videoContext->height);
-                        m_videoRawFrame = CreatePictureFrame(m_videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, m_videoRawBuffer);
-                        m_videoRGBAFrame = CreatePictureFrame(AVPixelFormat::AV_PIX_FMT_BGRA, m_videoSize.x, m_videoSize.y, m_videoRGBABuffer);
+                        m_videoSize = sf::Vector2i(m_data->videoContext->width, m_data->videoContext->height);
+                        m_data->videoRawFrame = CreatePictureFrame(m_data->videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, m_data->videoRawBuffer);
+                        m_data->videoRGBAFrame = CreatePictureFrame(AVPixelFormat::AV_PIX_FMT_BGRA, m_videoSize.x, m_videoSize.y, m_data->videoRGBABuffer);
 
-                        if (!m_videoRawFrame || !m_videoRGBAFrame)
+                        if (!m_data->videoRawFrame || !m_data->videoRGBAFrame)
                         {
                             std::cout << "Motion: Failed to create video frames" << std::endl;
-                            m_videoStreamID = -1;
+                            m_data->videoStreamID = -1;
                         }
                         else
                         {
                             int swapmode = SWS_FAST_BILINEAR;
                             if (m_videoSize.x * m_videoSize.y <= 500000 && m_videoSize.x % 8 != 0) swapmode |= SWS_ACCURATE_RND;
-                            m_videoSWContext = sws_getCachedContext(nullptr, m_videoSize.x, m_videoSize.y, m_videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, AVPixelFormat::AV_PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
+                            m_data->videoSWContext = sws_getCachedContext(nullptr, m_videoSize.x, m_videoSize.y, m_data->videoContext->pix_fmt, m_videoSize.x, m_videoSize.y, AVPixelFormat::AV_PIX_FMT_RGBA, swapmode, nullptr, nullptr, nullptr);
                         }
                     }
                 }
@@ -216,68 +284,68 @@ namespace mt
 
         if (HasAudio())
         {
-            m_audioContext = m_formatContext->streams[m_audioStreamID]->codec;
+            m_data->audioContext = m_data->formatContext->streams[m_data->audioStreamID]->codec;
 
-            if (!m_audioContext)
+            if (!m_data->audioContext)
             {
                 std::cout << "Motion: Failed to get audio codec context" << std::endl;
-                m_audioStreamID = -1;
+                m_data->audioStreamID = -1;
             }
             else
             {
-                m_audioCodec = avcodec_find_decoder(m_audioContext->codec_id);
+                m_data->audioCodec = avcodec_find_decoder(m_data->audioContext->codec_id);
 
-                if (!m_audioCodec)
+                if (!m_data->audioCodec)
                 {
                     std::cout << "Motion: Failed to find audio codec" << std::endl;
-                    m_audioStreamID = -1;
+                    m_data->audioStreamID = -1;
                 }
                 else
                 {
-                    if (avcodec_open2(m_audioContext, m_audioCodec, nullptr) != 0)
+                    if (avcodec_open2(m_data->audioContext, m_data->audioCodec, nullptr) != 0)
                     {
                         std::cout << "Motion: Failed to load audio codec" << std::endl;
-                        m_audioStreamID = -1;
+                        m_data->audioStreamID = -1;
                     }
                     else
                     {
-                        m_audioRawBuffer = av_frame_alloc();
+                        m_data->audioRawBuffer = av_frame_alloc();
 
-                        if (!m_audioRawBuffer)
+                        if (!m_data->audioRawBuffer)
                         {
                             std::cout << "Motion: Failed to allocate audio buffer" << std::endl;
-                            m_audioStreamID = -1;
+                            m_data->audioStreamID = -1;
                         }
                         else
                         {
-                            if (av_samples_alloc(&m_audioPCMBuffer, nullptr, m_audioContext->channels, av_samples_get_buffer_size(nullptr, m_audioContext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0)
+                            if (av_samples_alloc(&m_data->audioPCMBuffer, nullptr, m_data->audioContext->channels, av_samples_get_buffer_size(nullptr, m_data->audioContext->channels, MAX_AUDIO_SAMPLES, AV_SAMPLE_FMT_S16, 0), AV_SAMPLE_FMT_S16, 0) < 0)
                             {
                                 std::cout << "Motion: Failed to create audio samples buffer" << std::endl;
-                                m_audioStreamID = -1;
+                                m_data->audioStreamID = -1;
                             }
                             else
                             {
-                                av_frame_unref(m_audioRawBuffer);
+                                av_frame_unref(m_data->audioRawBuffer);
 
-                                uint64_t inchanlayout = m_audioContext->channel_layout;
+                                uint64_t inchanlayout = m_data->audioContext->channel_layout;
                                 uint64_t outchanlayout = inchanlayout;
 
                                 if (inchanlayout == 0)
-                                    inchanlayout = av_get_default_channel_layout(m_audioContext->channels);
+                                    inchanlayout = av_get_default_channel_layout(m_data->audioContext->channels);
 
                                 if (outchanlayout != AV_CH_LAYOUT_MONO)
                                     outchanlayout = AV_CH_LAYOUT_STEREO;
 
-                                m_audioSWContext = swr_alloc();
+                                m_data->audioSWContext = swr_alloc();
 
-                                av_opt_set_int(m_audioSWContext, "in_channel_layout", inchanlayout, 0);
-                                av_opt_set_int(m_audioSWContext, "out_channel_layout", outchanlayout, 0);
-                                av_opt_set_int(m_audioSWContext, "in_sample_rate", m_audioContext->sample_rate, 0);
-                                av_opt_set_int(m_audioSWContext, "out_sample_rate", m_audioContext->sample_rate, 0);
-                                av_opt_set_sample_fmt(m_audioSWContext, "in_sample_fmt", m_audioContext->sample_fmt, 0);
-                                av_opt_set_sample_fmt(m_audioSWContext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+                                av_opt_set_int(m_data->audioSWContext, "in_channel_layout", inchanlayout, 0);
+                                av_opt_set_int(m_data->audioSWContext, "out_channel_layout", outchanlayout, 0);
+                                av_opt_set_int(m_data->audioSWContext, "in_sample_rate", m_data->audioContext->sample_rate, 0);
+                                av_opt_set_int(m_data->audioSWContext, "out_sample_rate", m_data->audioContext->sample_rate, 0);
+                                av_opt_set_sample_fmt(m_data->audioSWContext, "in_sample_fmt", m_data->audioContext->sample_fmt, 0);
+                                av_opt_set_sample_fmt(m_data->audioSWContext, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
 
-                                swr_init(m_audioSWContext);
+                                swr_init(m_data->audioSWContext);
 
                                 m_audioChannelCount = av_get_channel_layout_nb_channels(outchanlayout);
                             }
@@ -287,8 +355,8 @@ namespace mt
             }
         }
 
-        if (m_formatContext->duration != AV_NOPTS_VALUE)
-            m_fileLength = sf::milliseconds(static_cast<int>(m_formatContext->duration) / 1000);
+        if (m_data->formatContext->duration != AV_NOPTS_VALUE)
+            m_fileLength = sf::milliseconds(static_cast<int>(m_data->formatContext->duration) / 1000);
 
         if (HasVideo() || HasAudio())
         {
@@ -320,12 +388,12 @@ namespace mt
 
     bool DataSource::HasVideo() const
     {
-        return m_videoStreamID != -1;
+        return m_data->videoStreamID != -1;
     }
 
     bool DataSource::HasAudio() const
     {
-        return m_audioStreamID != -1;
+        return m_data->audioStreamID != -1;
     }
 
     sf::Vector2i DataSource::GetVideoSize() const
@@ -343,8 +411,8 @@ namespace mt
         if (!HasVideo())
             return sf::Time::Zero;
 
-        AVRational r1 = m_formatContext->streams[m_videoStreamID]->avg_frame_rate;
-        AVRational r2 = m_formatContext->streams[m_videoStreamID]->r_frame_rate;
+        AVRational r1 = m_data->formatContext->streams[m_data->videoStreamID]->avg_frame_rate;
+        AVRational r2 = m_data->formatContext->streams[m_data->videoStreamID]->r_frame_rate;
 
         if ((!r1.num || !r1.den) && (!r2.num || !r2.den))
             return sf::seconds(1.0f / 29.97f);
@@ -367,7 +435,7 @@ namespace mt
         if (!HasAudio())
             return -1;
 
-        return m_audioContext->sample_rate;
+        return m_data->audioContext->sample_rate;
     }
 
     void DataSource::Play()
@@ -428,28 +496,28 @@ namespace mt
 
             if (HasAudio())
             {
-                AVRational timebase = m_formatContext->streams[m_audioStreamID]->time_base;
+                AVRational timebase = m_data->formatContext->streams[m_data->audioStreamID]->time_base;
 
                 if (timebase.den != 0)
                     seekTarget = av_rescale_q(seekTarget, TIME_BASE_Q, timebase);
 
-                avformat_seek_file(m_formatContext, m_audioStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
+                avformat_seek_file(m_data->formatContext, m_data->audioStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
             }
             else if (HasVideo())
             {
-                AVRational timebase = m_formatContext->streams[m_videoStreamID]->time_base;
+                AVRational timebase = m_data->formatContext->streams[m_data->videoStreamID]->time_base;
 
                 if (timebase.den != 0)
                     seekTarget = av_rescale_q(seekTarget, TIME_BASE_Q, timebase);
 
-                avformat_seek_file(m_formatContext, m_videoStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
+                avformat_seek_file(m_data->formatContext, m_data->videoStreamID, INT64_MIN, seekTarget, INT64_MAX, 0);
             }
 
             if (HasAudio())
-                avcodec_flush_buffers(m_audioContext);
+                avcodec_flush_buffers(m_data->audioContext);
 
             if (HasVideo())
-                avcodec_flush_buffers(m_videoContext);
+                avcodec_flush_buffers(m_data->videoContext);
 
             if (startThread)
                 StartDecodeThread();
@@ -564,21 +632,21 @@ namespace mt
 
                     av_init_packet(packet);
 
-                    if (av_read_frame(m_formatContext, packet) == 0)
+                    if (av_read_frame(m_data->formatContext, packet) == 0)
                     {
-                        if (packet->stream_index == m_videoStreamID)
+                        if (packet->stream_index == m_data->videoStreamID)
                         {
                             int decoderesult = 0;
 
-                            if (avcodec_decode_video2(m_videoContext, m_videoRawFrame, &decoderesult, packet) >= 0)
+                            if (avcodec_decode_video2(m_data->videoContext, m_data->videoRawFrame, &decoderesult, packet) >= 0)
                             {
                                 if (decoderesult)
                                 {
-                                    if (sws_scale(m_videoSWContext, m_videoRawFrame->data, m_videoRawFrame->linesize, 0, m_videoContext->height, m_videoRGBAFrame->data, m_videoRGBAFrame->linesize))
+                                    if (sws_scale(m_data->videoSWContext, m_data->videoRawFrame->data, m_data->videoRawFrame->linesize, 0, m_data->videoContext->height, m_data->videoRGBAFrame->data, m_data->videoRGBAFrame->linesize))
                                     {
                                         validpacket = true;
 
-                                        priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_videoRGBAFrame->data[0], m_videoSize.x, m_videoSize.y));
+                                        priv::VideoPacketPtr packet(std::make_shared<priv::VideoPacket>(m_data->videoRGBAFrame->data[0], m_videoSize.x, m_videoSize.y));
                                         {
                                             sf::Lock lock(m_playbackMutex);
 
@@ -595,21 +663,21 @@ namespace mt
                                 }
                             }
                         }
-                        else if (packet->stream_index == m_audioStreamID)
+                        else if (packet->stream_index == m_data->audioStreamID)
                         {
                             int decoderesult = 0;
 
-                            if (avcodec_decode_audio4(m_audioContext, m_audioRawBuffer, &decoderesult, packet) > 0)
+                            if (avcodec_decode_audio4(m_data->audioContext, m_data->audioRawBuffer, &decoderesult, packet) > 0)
                             {
                                 if (decoderesult)
                                 {
-                                    int convertlength = swr_convert(m_audioSWContext, &m_audioPCMBuffer, m_audioRawBuffer->nb_samples, (const uint8_t**)m_audioRawBuffer->extended_data, m_audioRawBuffer->nb_samples);
+                                    int convertlength = swr_convert(m_data->audioSWContext, &m_data->audioPCMBuffer, m_data->audioRawBuffer->nb_samples, (const uint8_t**)m_data->audioRawBuffer->extended_data, m_data->audioRawBuffer->nb_samples);
 
                                     if (convertlength > 0)
                                     {
                                         validpacket = true;
 
-                                        priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_audioPCMBuffer, convertlength, m_audioChannelCount));
+                                        priv::AudioPacketPtr packet(std::make_shared<priv::AudioPacket>(m_data->audioPCMBuffer, convertlength, m_audioChannelCount));
                                         {
                                             sf::Lock lock(m_playbackMutex);
 
@@ -671,37 +739,6 @@ namespace mt
         }
 
         return true;
-    }
-
-    AVFrame* DataSource::CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer)
-    {
-        AVFrame* picture = av_frame_alloc();
-
-        if (!picture)
-            return nullptr;
-
-        int size = avpicture_get_size(SelectedPixelFormat, Width, Height);
-
-        PictureBuffer = (uint8_t*)av_malloc(size);
-
-        if (!PictureBuffer)
-        {
-            av_frame_free(&picture);
-            return nullptr;
-        }
-
-        avpicture_fill((AVPicture*)picture, PictureBuffer, SelectedPixelFormat, Width, Height);
-
-        return picture;
-    }
-
-    void DataSource::DestroyPictureFrame(AVFrame*& PictureFrame, uint8_t*& PictureBuffer)
-    {
-        av_free(PictureBuffer);
-        av_frame_free(&PictureFrame);
-
-        PictureBuffer = nullptr;
-        PictureFrame = nullptr;
     }
 
     bool DataSource::IsEndofFileReached() const

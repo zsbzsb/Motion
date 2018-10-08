@@ -25,15 +25,6 @@
 #include <Motion/VideoPlaybackBase.hpp>
 #include <Motion/State.hpp>
 
-extern "C"
-{
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-#include <libswresample/swresample.h>
-#include <libavutil/opt.h>
-}
-
 namespace mt
 {
     class VideoPlaybackBase;
@@ -45,6 +36,8 @@ namespace mt
         friend class AudioPlaybackBase;
 
     private:
+        struct DecodeData;
+
         sf::Clock m_updateClock;
         sf::Time m_playingOffset;
         sf::Time m_fileLength;
@@ -52,21 +45,7 @@ namespace mt
         int m_audioChannelCount;
         float m_playbackSpeed;
 
-        int m_videoStreamID;
-        int m_audioStreamID;
-        AVFormatContext* m_formatContext;
-        AVCodecContext* m_videoContext;
-        AVCodecContext* m_audioContext;
-        AVCodec* m_videoCodec;
-        AVCodec* m_audioCodec;
-        AVFrame* m_videoRawFrame;
-        AVFrame* m_videoRGBAFrame;
-        AVFrame* m_audioRawBuffer;
-        uint8_t* m_videoRawBuffer;
-        uint8_t* m_videoRGBABuffer;
-        uint8_t* m_audioPCMBuffer;
-        SwsContext* m_videoSWContext;
-        SwrContext* m_audioSWContext;
+        std::unique_ptr<DecodeData> m_data;
 
         State m_state;
         std::unique_ptr<std::thread> m_decodeThread;
@@ -78,8 +57,6 @@ namespace mt
         std::vector<mt::VideoPlaybackBase*> m_videoPlaybacks;
         std::vector<mt::AudioPlaybackBase*> m_audioPlaybacks;
 
-        AVFrame* CreatePictureFrame(AVPixelFormat SelectedPixelFormat, int Width, int Height, uint8_t*& PictureBuffer);
-        void DestroyPictureFrame(AVFrame*& PictureFrame, uint8_t*& PictureBuffer);
         void Cleanup();
         void StartDecodeThread();
         void StopDecodeThread();
