@@ -165,6 +165,13 @@ namespace mt
 
     void AudioPlaybackBase::StateChanged(State PreviousState, State NewState)
     {
+        if (!m_initialSetupDone)
+        {
+            SourceReloaded();
+
+            m_initialSetupDone = true;
+        }
+
         if (NewState == State::Playing && m_dataSource->HasAudio())
             StartStream();
         else if (NewState == State::Paused && m_dataSource->HasAudio())

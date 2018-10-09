@@ -108,6 +108,13 @@ namespace mt
 
     void VideoPlaybackBase::StateChanged(State PreviousState, State NewState)
     {
+        if (!m_initialSetupDone)
+        {
+            SourceReloaded();
+
+            m_initialSetupDone = true;
+        }
+
         if (NewState == State::Playing && PreviousState == State::Stopped)
         {
             m_frameJump = 1;
