@@ -38,8 +38,10 @@ namespace MotionNET.SFML
             }
         }
 
-        public SfmlVideoPlayback(DataSource dataSource) :
-            this(dataSource, Color.Black) { }
+        public SfmlVideoPlayback(DataSource dataSource) : this(dataSource, Color.Black)
+        {
+            
+        }
 
         public SfmlVideoPlayback(DataSource dataSource, Color bufferColor)
         {
