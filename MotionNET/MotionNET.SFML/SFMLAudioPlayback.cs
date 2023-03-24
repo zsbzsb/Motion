@@ -8,7 +8,6 @@ namespace MotionNET.SFML
     public class SfmlAudioPlayback : InternalBase
     {
         private const string ImportPrefix = "mtSFMLAudioPlayback_";
-
         private IntPtr pointer = IntPtr.Zero;
 
         public float Volume

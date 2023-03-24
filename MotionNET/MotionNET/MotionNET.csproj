@@ -4,6 +4,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>MotionNET</AssemblyName>
     <RootNamespace>MotionNET</RootNamespace>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

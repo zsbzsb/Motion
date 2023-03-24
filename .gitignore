@@ -151,3 +151,6 @@ $RECYCLE.BIN/
 
 # Mac crap
 .DS_Store
+
+# VS Code
+.vscode/
