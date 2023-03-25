@@ -5,31 +5,26 @@ using SFML.Graphics;
 
 namespace MotionNET.SFML
 {
-    public class SFMLVideoPlayback : Transformable, Drawable, IDisposable
+    public class SfmlVideoPlayback : Transformable, Drawable, IDisposable
     {
-        #region Constants
         private const string ImportPrefix = "mtSFMLVideoPlayback_";
-        #endregion
 
-        #region Variables
-        private IntPtr _pointer = IntPtr.Zero;
-        private InternalBaseMember _base = new InternalBaseMember();
-        #endregion
+        private IntPtr pointer = IntPtr.Zero;
+        private InternalBaseMember @base = new InternalBaseMember();
 
-        #region Properties
         public Color BufferColor
         {
             get
             {
-                _base.EnsureValid();
+                @base.EnsureValid();
 
-                return GetBufferColor(_pointer);
+                return GetBufferColor(pointer);
             }
             set
             {
-                _base.EnsureValid();
+                @base.EnsureValid();
 
-                SetBufferColor(_pointer, value);
+                SetBufferColor(pointer, value);
             }
         }
 
@@ -37,93 +32,85 @@ namespace MotionNET.SFML
         {
             get
             {
-                _base.EnsureValid();
+                @base.EnsureValid();
 
-                return GetPlayedFrameCount(_pointer);
+                return GetPlayedFrameCount(pointer);
             }
         }
-        #endregion
 
-        #region CTOR
-        public SFMLVideoPlayback(DataSource DataSource) :
-            this(DataSource, Color.Black) { }
-
-        public SFMLVideoPlayback(DataSource DataSource, Color BufferColor)
+        public SfmlVideoPlayback(DataSource dataSource) : this(dataSource, Color.Black)
         {
-            _pointer = CreateVideoPlayback(DataSource.Pointer, BufferColor);
-
-            _base.DestroyCalled += () => { DestroyVideoPlayback(_pointer); };
+            
         }
-        #endregion
 
-        #region DTOR
-        ~SFMLVideoPlayback()
+        public SfmlVideoPlayback(DataSource dataSource, Color bufferColor)
         {
-            _base.Dispose();
-        }
-        #endregion
+            pointer = CreateVideoPlayback(dataSource.Pointer, bufferColor);
 
-        #region Functions
+            @base.DestroyCalled += () => { DestroyVideoPlayback(pointer); };
+        }
+
+        ~SfmlVideoPlayback()
+        {
+            @base.Dispose();
+        }
+
         public new void Dispose()
         {
             base.Dispose();
-            _base.Dispose();
+            @base.Dispose();
 
             GC.SuppressFinalize(this);
         }
         public void Draw(RenderTarget target, RenderStates states)
         {
-            _base.EnsureValid();
+            @base.EnsureValid();
 
             states.Transform *= Transform;
             var marshaledstates = states.MarshalRenderStates();
 
             if (target is RenderWindow)
-                DrawRenderWindow(_pointer, ((RenderWindow)target).CPointer, ref marshaledstates);
+                DrawRenderWindow(pointer, ((RenderWindow)target).CPointer, ref marshaledstates);
             else if (target is RenderTexture)
-                DrawRenderTexture(_pointer, ((RenderTexture)target).CPointer, ref marshaledstates);
+                DrawRenderTexture(pointer, ((RenderTexture)target).CPointer, ref marshaledstates);
         }
 
         public Image GetLastFrame()
         {
-            _base.EnsureValid();
+            @base.EnsureValid();
 
             var image = new Image(0, 0);
 
-            GetLastFrame(_pointer, image.CPointer);
+            GetLastFrame(pointer, image.CPointer);
 
             return image;
         }
-        #endregion
 
-        #region Imports
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
-        private static extern IntPtr CreateVideoPlayback(IntPtr DataSourcePointer, Color BufferColor);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
+        private static extern IntPtr CreateVideoPlayback(IntPtr dataSourcePointer, Color bufferColor);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
-        private static extern void DestroyVideoPlayback(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
+        private static extern void DestroyVideoPlayback(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetBufferColor"), SuppressUnmanagedCodeSecurity]
-        private static extern Color GetBufferColor(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetBufferColor"), SuppressUnmanagedCodeSecurity]
+        private static extern Color GetBufferColor(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetBufferColor"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetBufferColor(IntPtr Pointer, Color BufferColor);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetBufferColor"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetBufferColor(IntPtr pointer, Color bufferColor);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "DrawRenderWindow"), SuppressUnmanagedCodeSecurity]
-        private static extern void DrawRenderWindow(IntPtr Pointer, IntPtr RenderWindowPointer, ref RenderStatesMarshal RenderStates);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "DrawRenderWindow"), SuppressUnmanagedCodeSecurity]
+        private static extern void DrawRenderWindow(IntPtr pointer, IntPtr renderWindowPointer, ref RenderStatesMarshal renderStates);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "DrawRenderTexture"), SuppressUnmanagedCodeSecurity]
-        private static extern void DrawRenderTexture(IntPtr Pointer, IntPtr RenderTexturePointer, ref RenderStatesMarshal RenderStates);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "DrawRenderTexture"), SuppressUnmanagedCodeSecurity]
+        private static extern void DrawRenderTexture(IntPtr pointer, IntPtr renderTexturePointer, ref RenderStatesMarshal renderStates);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetLastFrame"), SuppressUnmanagedCodeSecurity]
-        private static extern void GetLastFrame(IntPtr Pointer, IntPtr ImagePointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetLastFrame"), SuppressUnmanagedCodeSecurity]
+        private static extern void GetLastFrame(IntPtr pointer, IntPtr imagePointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetPlayedFrameCount"), SuppressUnmanagedCodeSecurity]
-        private static extern uint GetPlayedFrameCount(IntPtr Pointer);
-        #endregion
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetPlayedFrameCount"), SuppressUnmanagedCodeSecurity]
+        private static extern uint GetPlayedFrameCount(IntPtr pointer);
     }
 
-    #region Internal Structures
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderStatesMarshal
     {
@@ -135,17 +122,16 @@ namespace MotionNET.SFML
 
     internal static class MarshalExtentions
     {
-        public static RenderStatesMarshal MarshalRenderStates(this RenderStates States)
+        public static RenderStatesMarshal MarshalRenderStates(this RenderStates states)
         {
             var marshal = new RenderStatesMarshal();
 
-            marshal.BlendMode = States.BlendMode;
-            marshal.Transform = States.Transform;
-            marshal.Texture = States.Texture?.CPointer ?? IntPtr.Zero;
-            marshal.Shader = States.Shader?.CPointer ?? IntPtr.Zero;
+            marshal.BlendMode = states.BlendMode;
+            marshal.Transform = states.Transform;
+            marshal.Texture = states.Texture?.CPointer ?? IntPtr.Zero;
+            marshal.Shader = states.Shader?.CPointer ?? IntPtr.Zero;
 
             return marshal;
         }
     }
-    #endregion
 }

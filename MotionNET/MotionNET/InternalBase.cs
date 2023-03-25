@@ -5,31 +5,24 @@ namespace MotionNET
     /// <summary>DO NOT USE - for internal use only</summary>
     public abstract class InternalBase : IDisposable
     {
-        #region Variables
-        private bool _disposed = false;
-        #endregion
+        private bool disposed = false;
 
-        #region Properties
         protected bool Disposed
         {
             get
             {
-                return _disposed;
+                return disposed;
             }
         }
-        #endregion
 
-        #region CTOR
         ~InternalBase()
         {
             Dispose();
         }
-        #endregion
 
-        #region Functions
         public void Dispose()
         {
-            if (!_disposed)
+            if (!disposed)
             {
                 try
                 {
@@ -44,7 +37,7 @@ namespace MotionNET
                     #endif
                 }
 
-                _disposed = true;
+                disposed = true;
 
                 GC.SuppressFinalize(this);
             }
@@ -54,9 +47,10 @@ namespace MotionNET
 
         protected void EnsureValid()
         {
-            if (_disposed)
+            if (disposed)
+            {
                 throw new Exception("Attempt to access disposed object");
+            }
         }
-        #endregion
     }
 }

@@ -5,30 +5,24 @@ using SFML.System;
 
 namespace MotionNET.SFML
 {
-    public class SFMLAudioPlayback : InternalBase
+    public class SfmlAudioPlayback : InternalBase
     {
-        #region Constants
         private const string ImportPrefix = "mtSFMLAudioPlayback_";
-        #endregion
+        private IntPtr pointer = IntPtr.Zero;
 
-        #region Variables
-        private IntPtr _pointer = IntPtr.Zero;
-        #endregion
-
-        #region Properties
         public float Volume
         {
             get
             {
                 EnsureValid();
 
-                return GetVolume(_pointer);
+                return GetVolume(pointer);
             }
             set
             {
                 EnsureValid();
 
-                SetVolume(_pointer, value);
+                SetVolume(pointer, value);
             }
         }
 
@@ -38,53 +32,46 @@ namespace MotionNET.SFML
             {
                 EnsureValid();
 
-                return GetOffsetCorrection(_pointer);
+                return GetOffsetCorrection(pointer);
             }
             set
             {
                 EnsureValid();
 
-                SetOffsetCorrection(_pointer, value);
+                SetOffsetCorrection(pointer, value);
             }
         }
-        #endregion
 
-        #region CTOR
-        public SFMLAudioPlayback(DataSource DataSource) :
-            this(DataSource, Time.FromMilliseconds(50)) { }
+        public SfmlAudioPlayback(DataSource dataSource) :
+            this(dataSource, Time.FromMilliseconds(50)) { }
 
-        public SFMLAudioPlayback(DataSource DataSource, Time OffsetCorrection)
+        public SfmlAudioPlayback(DataSource dataSource, Time offsetCorrection)
         {
-            _pointer = CreateAudioPlayback(DataSource.Pointer, OffsetCorrection);
+            pointer = CreateAudioPlayback(dataSource.Pointer, offsetCorrection);
         }
-        #endregion
 
-        #region Functions
         protected override void Destroy()
         {
-            DestroyAudioPlayback(_pointer);
+            DestroyAudioPlayback(pointer);
             base.Destroy();
         }
-        #endregion
 
-        #region Imports
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
-        private static extern IntPtr CreateAudioPlayback(IntPtr DataSourcePointer, Time OffsetCorrection);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
+        private static extern IntPtr CreateAudioPlayback(IntPtr dataSourcePointer, Time offsetCorrection);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
-        private static extern void DestroyAudioPlayback(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
+        private static extern void DestroyAudioPlayback(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetVolume"), SuppressUnmanagedCodeSecurity]
-        private static extern float GetVolume(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetVolume"), SuppressUnmanagedCodeSecurity]
+        private static extern float GetVolume(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetVolume"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetVolume(IntPtr Pointer, float Volume);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetVolume"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetVolume(IntPtr pointer, float volume);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
-        private static extern Time GetOffsetCorrection(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
+        private static extern Time GetOffsetCorrection(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetOffsetCorrection(IntPtr Pointer, Time OffsetCorrection);
-        #endregion
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetOffsetCorrection(IntPtr pointer, Time offsetCorrection);
     }
 }

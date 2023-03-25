@@ -10,6 +10,7 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
+#include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 }
 
@@ -34,7 +35,7 @@ namespace
         if (!picture)
             return nullptr;
 
-        int size = avpicture_get_size(SelectedPixelFormat, Width, Height);
+        int size = av_image_get_buffer_size(SelectedPixelFormat, Width, Height, 0);
 
         PictureBuffer = (uint8_t*)av_malloc(size);
 
@@ -44,8 +45,8 @@ namespace
             return nullptr;
         }
 
-        avpicture_fill((AVPicture*)picture, PictureBuffer, SelectedPixelFormat, Width, Height);
 
+        int ret = av_image_alloc(picture->data, picture->linesize, Width, Height, SelectedPixelFormat, 1);
         return picture;
     }
 
@@ -116,7 +117,6 @@ namespace mt
         m_videoPlaybacks(),
         m_audioPlaybacks()
     {
-        av_register_all();
     }
 
     DataSource::~DataSource()
@@ -218,7 +218,7 @@ namespace mt
 
         for (unsigned int i = 0; i < m_data->formatContext->nb_streams; i++)
         {
-            switch (m_data->formatContext->streams[i]->codec->codec_type)
+            switch (m_data->formatContext->streams[i]->codecpar->codec_type)
             {
                 case AVMEDIA_TYPE_VIDEO:
                     if (m_data->videoStreamID == -1 && EnableVideo)
@@ -237,7 +237,8 @@ namespace mt
 
         if (HasVideo())
         {
-            m_data->videoContext = m_data->formatContext->streams[m_data->videoStreamID]->codec;
+            m_data->videoContext = avcodec_alloc_context3(nullptr);
+            avcodec_parameters_to_context(m_data->videoContext, m_data->formatContext->streams[m_data->videoStreamID]->codecpar);
 
             if (!m_data->videoContext)
             {
@@ -246,7 +247,8 @@ namespace mt
             }
             else
             {
-                m_data->videoCodec = avcodec_find_decoder(m_data->videoContext->codec_id);
+                const AVCodec* codec = avcodec_find_decoder(m_data->videoContext->codec_id);
+                m_data->videoCodec = const_cast<AVCodec*>(codec);
 
                 if (!m_data->videoCodec)
                 {
@@ -284,7 +286,8 @@ namespace mt
 
         if (HasAudio())
         {
-            m_data->audioContext = m_data->formatContext->streams[m_data->audioStreamID]->codec;
+            const AVCodec* const_codec = avcodec_find_decoder(m_data->formatContext->streams[m_data->audioStreamID]->codecpar->codec_id);
+            m_data->audioCodec = const_cast<AVCodec*>(const_codec);
 
             if (!m_data->audioContext)
             {
@@ -293,7 +296,8 @@ namespace mt
             }
             else
             {
-                m_data->audioCodec = avcodec_find_decoder(m_data->audioContext->codec_id);
+                const AVCodec* const_codec = avcodec_find_decoder(m_data->audioContext->codec_id);
+                m_data->audioCodec = const_cast<AVCodec*>(const_codec);
 
                 if (!m_data->audioCodec)
                 {
@@ -636,11 +640,9 @@ namespace mt
                     {
                         if (packet->stream_index == m_data->videoStreamID)
                         {
-                            int decoderesult = 0;
-
-                            if (avcodec_decode_video2(m_data->videoContext, m_data->videoRawFrame, &decoderesult, packet) >= 0)
+                            if (avcodec_send_packet(m_data->videoContext, packet) == 0)
                             {
-                                if (decoderesult)
+                                while (avcodec_receive_frame(m_data->videoContext, m_data->videoRawFrame) == 0)
                                 {
                                     if (sws_scale(m_data->videoSWContext, m_data->videoRawFrame->data, m_data->videoRawFrame->linesize, 0, m_data->videoContext->height, m_data->videoRGBAFrame->data, m_data->videoRGBAFrame->linesize))
                                     {
@@ -667,11 +669,16 @@ namespace mt
                         {
                             int decoderesult = 0;
 
-                            if (avcodec_decode_audio4(m_data->audioContext, m_data->audioRawBuffer, &decoderesult, packet) > 0)
+                            if (avcodec_send_packet(m_data->audioContext, packet) == 0)
                             {
-                                if (decoderesult)
+                                AVFrame *frame = av_frame_alloc();
+                                if (frame == NULL)
                                 {
-                                    int convertlength = swr_convert(m_data->audioSWContext, &m_data->audioPCMBuffer, m_data->audioRawBuffer->nb_samples, (const uint8_t**)m_data->audioRawBuffer->extended_data, m_data->audioRawBuffer->nb_samples);
+                                    // handle error
+                                }
+                                if (avcodec_receive_frame(m_data->audioContext, frame) == 0)
+                                {
+                                    int convertlength = swr_convert(m_data->audioSWContext, &m_data->audioPCMBuffer, m_data->audioRawBuffer->nb_samples, (const uint8_t**)frame->extended_data, frame->nb_samples);
 
                                     if (convertlength > 0)
                                     {
@@ -692,10 +699,11 @@ namespace mt
                                         isfull = IsFull();
                                     }
                                 }
+                                av_frame_free(&frame);
                             }
                         }
 
-                        av_free_packet(packet);
+                        av_packet_unref(packet);
                         av_free(packet);
                     }
                     else
@@ -703,7 +711,7 @@ namespace mt
                         m_PlayingToEOF = true;
                         validpacket = true;
 
-                        av_free_packet(packet);
+                        av_packet_unref(packet);
                         av_free(packet);
                     }
                 }

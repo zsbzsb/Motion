@@ -6,75 +6,61 @@ namespace MotionNET
 {
     public abstract class VideoPlaybackBase : InternalBase
     {
-        #region Constants
         private const string ImportPrefix = "mtVideoPlaybackBase_";
-        #endregion
 
-        #region Delegates
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void CreateTextureCB(int Width, int Height);
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void CreateTextureCb(int width, int height);
 
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void UpdateTextureCB(IntPtr RGBABuffer);
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void UpdateTextureCb(IntPtr rgbaBuffer);
 
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void ClearTextureCB();
-        #endregion
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void ClearTextureCb();
 
-        #region Variables
-        private IntPtr _pointer = IntPtr.Zero;
+        private IntPtr pointer = IntPtr.Zero;
 
-        private CreateTextureCB _create;
-        private UpdateTextureCB _update;
-        private ClearTextureCB _clear;
-        #endregion
+        private CreateTextureCb create;
+        private UpdateTextureCb update;
+        private ClearTextureCb clear;
 
-        #region Properties
         public uint PlayedFrameCount
         {
             get
             {
                 EnsureValid();
 
-                return GetPlayedFrameCount(_pointer);
+                return GetPlayedFrameCount(pointer);
             }
         }
-        #endregion
 
-        #region CTOR
-        public VideoPlaybackBase(DataSource DataSource)
+        public VideoPlaybackBase(DataSource dataSource)
         {
-            _create = CreateTexture;
-            _update = UpdateTexture;
-            _clear = ClearTexture;
+            create = CreateTexture;
+            update = UpdateTexture;
+            clear = ClearTexture;
 
-            _pointer = CreateVideoPlayback(DataSource.Pointer, _create, _update, _clear);
+            pointer = CreateVideoPlayback(dataSource.Pointer, create, update, clear);
         }
-        #endregion
 
-        #region Functions
         protected override void Destroy()
         {
-            DestroyVideoPlayback(_pointer);
+            DestroyVideoPlayback(pointer);
             base.Destroy();
         }
 
-        protected abstract void CreateTexture(int Width, int Height);
+        protected abstract void CreateTexture(int width, int height);
 
-        protected abstract void UpdateTexture(IntPtr RGBABuffer);
+        protected abstract void UpdateTexture(IntPtr rgbaBuffer);
 
         protected abstract void ClearTexture();
-        #endregion
 
-        #region Imports
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
-        private static extern IntPtr CreateVideoPlayback(IntPtr DataSourcePointer, CreateTextureCB CreateCB, UpdateTextureCB UpdateCB, ClearTextureCB ClearCB);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
+        private static extern IntPtr CreateVideoPlayback(IntPtr dataSourcePointer, CreateTextureCb createCb, UpdateTextureCb updateCb, ClearTextureCb clearCb);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
-        private static extern void DestroyVideoPlayback(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
+        private static extern void DestroyVideoPlayback(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetPlayedFrameCount"), SuppressUnmanagedCodeSecurity]
-        private static extern uint GetPlayedFrameCount(IntPtr Pointer);
-        #endregion
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetPlayedFrameCount"), SuppressUnmanagedCodeSecurity]
+        private static extern uint GetPlayedFrameCount(IntPtr pointer);
     }
 }

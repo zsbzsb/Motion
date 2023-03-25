@@ -7,75 +7,64 @@ namespace MotionNET
 {
     public abstract class AudioPlaybackBase : InternalBase
     {
-        #region Constants
         private const string ImportPrefix = "mtAudioPlaybackBase_";
-        #endregion
 
-        #region Delegates
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void SetupStreamCB(uint ChannelCount, int SampleRate);
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void SetupStreamCb(uint channelCount, int sampleRate);
 
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void SetPlaybackSpeedCB(float PlaybackSpeed);
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void SetPlaybackSpeedCb(float playbackSpeed);
 
-        [UnmanagedFunctionPointer(Config.Motion_Call)]
-        private delegate void ChangeStateCB();
-        #endregion
+        [UnmanagedFunctionPointer(Config.MotionCall)]
+        private delegate void ChangeStateCb();
 
-        #region Variables
-        private IntPtr _pointer = IntPtr.Zero;
+        private IntPtr pointer = IntPtr.Zero;
 
-        private SetupStreamCB _setup;
-        private SetPlaybackSpeedCB _setSpeed;
-        private ChangeStateCB _start;
-        private ChangeStateCB _pause;
-        private ChangeStateCB _stop;
-        #endregion
+        private SetupStreamCb setup;
+        private SetPlaybackSpeedCb setSpeed;
+        private ChangeStateCb start;
+        private ChangeStateCb pause;
+        private ChangeStateCb stop;
 
-        #region Properties
         public Time OffsetCorrection
         {
             get
             {
                 EnsureValid();
 
-                return GetOffsetCorrection(_pointer);
+                return GetOffsetCorrection(pointer);
             }
             set
             {
                 EnsureValid();
 
-                SetOffsetCorrection(_pointer, value);
+                SetOffsetCorrection(pointer, value);
             }
         }
-        #endregion
 
-        #region CTOR
-        public AudioPlaybackBase(DataSource DataSource) :
-            this(DataSource, Time.FromMilliseconds(50)) { }
+        public AudioPlaybackBase(DataSource dataSource) :
+            this(dataSource, Time.FromMilliseconds(50)) { }
 
-        public AudioPlaybackBase(DataSource DataSource, Time OffsetCorrection)
+        public AudioPlaybackBase(DataSource dataSource, Time offsetCorrection)
         {
-            _setup = SetupStream;
-            _setSpeed = SetPlaybackSpeed;
-            _start = StartStream;
-            _pause = PauseStream;
-            _stop = StopStream;
+            setup = SetupStream;
+            setSpeed = SetPlaybackSpeed;
+            start = StartStream;
+            pause = PauseStream;
+            stop = StopStream;
 
-            _pointer = CreateAudioPlayback(DataSource.Pointer, OffsetCorrection, _setup, _setSpeed, _start, _pause, _stop);
+            pointer = CreateAudioPlayback(dataSource.Pointer, offsetCorrection, setup, setSpeed, start, pause, stop);
         }
-        #endregion
 
-        #region Functions
         protected override void Destroy()
         {
-            DestroyAudioPlayback(_pointer);
+            DestroyAudioPlayback(pointer);
             base.Destroy();
         }
 
-        protected abstract void SetupStream(uint ChannelCount, int SampleRate);
+        protected abstract void SetupStream(uint channelCount, int sampleRate);
 
-        protected abstract void SetPlaybackSpeed(float PlaybackSpped);
+        protected abstract void SetPlaybackSpeed(float playbackSpped);
 
         protected abstract void StartStream();
 
@@ -83,29 +72,26 @@ namespace MotionNET
 
         protected abstract void StopStream();
 
-        protected bool GetNextBuffer(ref IntPtr Samples, ref ulong SampleCount)
+        protected bool GetNextBuffer(ref IntPtr samples, ref ulong sampleCount)
         {
             EnsureValid();
 
-            return GetNextBuffer(_pointer, ref Samples, ref SampleCount);
+            return GetNextBuffer(pointer, ref samples, ref sampleCount);
         }
-        #endregion
 
-        #region Imports
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
-        private static extern IntPtr CreateAudioPlayback(IntPtr DataSourcePointer, Time OffsetCorrection, SetupStreamCB SetupCB, SetPlaybackSpeedCB SetSpeedCB, ChangeStateCB StartCB, ChangeStateCB PauseCB, ChangeStateCB StopCB);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
+        private static extern IntPtr CreateAudioPlayback(IntPtr dataSourcePointer, Time offsetCorrection, SetupStreamCb setupCb, SetPlaybackSpeedCb setSpeedCb, ChangeStateCb startCb, ChangeStateCb pauseCb, ChangeStateCb stopCb);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
-        private static extern void DestroyAudioPlayback(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
+        private static extern void DestroyAudioPlayback(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetNextBuffer"), SuppressUnmanagedCodeSecurity]
-        private static extern bool GetNextBuffer(IntPtr Pointer, ref IntPtr Samples, ref ulong SampleCount);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetNextBuffer"), SuppressUnmanagedCodeSecurity]
+        private static extern bool GetNextBuffer(IntPtr pointer, ref IntPtr samples, ref ulong sampleCount);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
-        private static extern Time GetOffsetCorrection(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
+        private static extern Time GetOffsetCorrection(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetOffsetCorrection(IntPtr Pointer, Time OffsetCorrection);
-        #endregion
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetOffsetCorrection"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetOffsetCorrection(IntPtr pointer, Time offsetCorrection);
     }
 }

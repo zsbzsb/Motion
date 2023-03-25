@@ -7,16 +7,11 @@ namespace MotionNET
 {
     public class DataSource : InternalBase
     {
-        #region Constants
         private const string ImportPrefix = "mtDataSource_";
-        #endregion
 
-        #region Variables
-        private IntPtr _pointer = IntPtr.Zero;
-        private bool _eofEventRaised = false;
-        #endregion
+        private IntPtr pointer = IntPtr.Zero;
+        private bool eofEventRaised = false;
 
-        #region Properties
         /// <summary>DO NOT USE - for internal use only</summary>
         public IntPtr Pointer
         {
@@ -24,7 +19,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return _pointer;
+                return pointer;
             }
         }
 
@@ -34,7 +29,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetHasVideo(_pointer);
+                return GetHasVideo(pointer);
             }
         }
 
@@ -44,7 +39,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetHasAudio(_pointer);
+                return GetHasAudio(pointer);
             }
         }
 
@@ -54,7 +49,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetVideoSize(_pointer);
+                return GetVideoSize(pointer);
             }
         }
 
@@ -64,7 +59,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetState(_pointer);
+                return GetState(pointer);
             }
         }
 
@@ -74,7 +69,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetVideoFrameTime(_pointer);
+                return GetVideoFrameTime(pointer);
             }
         }
 
@@ -84,7 +79,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetAudioChannelCount(_pointer);
+                return GetAudioChannelCount(pointer);
             }
         }
 
@@ -94,7 +89,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetAudioSampleRate(_pointer);
+                return GetAudioSampleRate(pointer);
             }
         }
 
@@ -104,7 +99,7 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetFileLength(_pointer);
+                return GetFileLength(pointer);
             }
         }
 
@@ -114,15 +109,15 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetPlayingOffset(_pointer);
+                return GetPlayingOffset(pointer);
             }
             set
             {
                 EnsureValid();
 
-                SetPlayingOffset(_pointer, value);
+                SetPlayingOffset(pointer, value);
 
-                _eofEventRaised = false;
+                eofEventRaised = false;
             }
         }
 
@@ -132,149 +127,141 @@ namespace MotionNET
             {
                 EnsureValid();
 
-                return GetPlaybackSpeed(_pointer);
+                return GetPlaybackSpeed(pointer);
             }
             set
             {
                 EnsureValid();
 
-                SetPlaybackSpeed(_pointer, value);
+                SetPlaybackSpeed(pointer, value);
             }
         }
 
-        public bool IsEndofFileReached
+        public bool IsEndOfFileReached
         {
             get
             {
                 EnsureValid();
 
-                return GetIsEndofFileReached(_pointer);
+                return GetIsEndofFileReached(pointer);
             }
         }
-        #endregion
 
-        #region Events
-        public event Action<DataSource> EndofFileReached;
-        #endregion
+        public event EventHandler<EventArgs> EndOfFileReached;
 
-        #region CTOR
         public DataSource()
         {
-            _pointer = CreateDataSource();
+            pointer = CreateDataSource();
         }
-        #endregion
 
-        #region Functions
         protected override void Destroy()
         {
-            DestroyDataSource(_pointer);
+            DestroyDataSource(pointer);
 
             base.Destroy();
         }
 
-        public bool LoadFromFile(string Filename, bool EnableVideo = true, bool EnableAudio = true)
+        public bool LoadFromFile(string filename, bool enableVideo = true, bool enableAudio = true)
         {
             EnsureValid();
 
-            return LoadFromFile(_pointer, Filename, EnableVideo, EnableAudio);
+            return LoadFromFile(pointer, filename, enableVideo, enableAudio);
         }
         public void Play()
         {
             EnsureValid();
 
-            Play(_pointer);
+            Play(pointer);
 
-            _eofEventRaised = false;
+            eofEventRaised = false;
         }
         public void Pause()
         {
             EnsureValid();
 
-            Pause(_pointer);
+            Pause(pointer);
         }
         public void Stop()
         {
             EnsureValid();
 
-            Stop(_pointer);
+            Stop(pointer);
 
-            _eofEventRaised = false;
+            eofEventRaised = false;
         }
+        
         public void Update()
         {
             EnsureValid();
 
-            Update(_pointer);
+            Update(pointer);
 
-            if (IsEndofFileReached && !_eofEventRaised)
+            if (IsEndOfFileReached && !eofEventRaised)
             {
-                _eofEventRaised = true;
+                eofEventRaised = true;
 
-                EndofFileReached?.Invoke(this);
+                EndOfFileReached.Invoke(this, EventArgs.Empty);
             }
         }
-        #endregion
 
-        #region Imports
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Create"), SuppressUnmanagedCodeSecurity]
         private static extern IntPtr CreateDataSource();
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
-        private static extern void DestroyDataSource(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Destroy"), SuppressUnmanagedCodeSecurity]
+        private static extern void DestroyDataSource(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "LoadFromFile"), SuppressUnmanagedCodeSecurity]
-        private static extern bool LoadFromFile(IntPtr Pointer, string Filename, bool EnableVideo, bool EnableAudio);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "LoadFromFile"), SuppressUnmanagedCodeSecurity]
+        private static extern bool LoadFromFile(IntPtr pointer, string filename, bool enableVideo, bool enableAudio);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Play"), SuppressUnmanagedCodeSecurity]
-        private static extern void Play(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Play"), SuppressUnmanagedCodeSecurity]
+        private static extern void Play(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Pause"), SuppressUnmanagedCodeSecurity]
-        private static extern void Pause(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Pause"), SuppressUnmanagedCodeSecurity]
+        private static extern void Pause(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Stop"), SuppressUnmanagedCodeSecurity]
-        private static extern void Stop(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Stop"), SuppressUnmanagedCodeSecurity]
+        private static extern void Stop(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "HasVideo"), SuppressUnmanagedCodeSecurity]
-        private static extern bool GetHasVideo(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "HasVideo"), SuppressUnmanagedCodeSecurity]
+        private static extern bool GetHasVideo(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "HasAudio"), SuppressUnmanagedCodeSecurity]
-        private static extern bool GetHasAudio(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "HasAudio"), SuppressUnmanagedCodeSecurity]
+        private static extern bool GetHasAudio(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetVideoSize"), SuppressUnmanagedCodeSecurity]
-        private static extern Vector2i GetVideoSize(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetVideoSize"), SuppressUnmanagedCodeSecurity]
+        private static extern Vector2i GetVideoSize(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetState"), SuppressUnmanagedCodeSecurity]
-        private static extern State GetState(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetState"), SuppressUnmanagedCodeSecurity]
+        private static extern State GetState(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetVideoFrameTime"), SuppressUnmanagedCodeSecurity]
-        private static extern Time GetVideoFrameTime(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetVideoFrameTime"), SuppressUnmanagedCodeSecurity]
+        private static extern Time GetVideoFrameTime(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetAudioChannelCount"), SuppressUnmanagedCodeSecurity]
-        private static extern int GetAudioChannelCount(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetAudioChannelCount"), SuppressUnmanagedCodeSecurity]
+        private static extern int GetAudioChannelCount(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetAudioSampleRate"), SuppressUnmanagedCodeSecurity]
-        private static extern int GetAudioSampleRate(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetAudioSampleRate"), SuppressUnmanagedCodeSecurity]
+        private static extern int GetAudioSampleRate(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetFileLength"), SuppressUnmanagedCodeSecurity]
-        private static extern Time GetFileLength(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetFileLength"), SuppressUnmanagedCodeSecurity]
+        private static extern Time GetFileLength(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetPlayingOffset"), SuppressUnmanagedCodeSecurity]
-        private static extern Time GetPlayingOffset(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetPlayingOffset"), SuppressUnmanagedCodeSecurity]
+        private static extern Time GetPlayingOffset(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetPlayingOffset"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetPlayingOffset(IntPtr Pointer, Time PlayingOffset);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetPlayingOffset"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetPlayingOffset(IntPtr pointer, Time playingOffset);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "Update"), SuppressUnmanagedCodeSecurity]
-        private static extern void Update(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "Update"), SuppressUnmanagedCodeSecurity]
+        private static extern void Update(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetPlaybackSpeed"), SuppressUnmanagedCodeSecurity]
-        private static extern float GetPlaybackSpeed(IntPtr Pointer);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetPlaybackSpeed"), SuppressUnmanagedCodeSecurity]
+        private static extern float GetPlaybackSpeed(IntPtr pointer);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "SetPlaybackSpeed"), SuppressUnmanagedCodeSecurity]
-        private static extern void SetPlaybackSpeed(IntPtr Pointer, float PlaybackSpeed);
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "SetPlaybackSpeed"), SuppressUnmanagedCodeSecurity]
+        private static extern void SetPlaybackSpeed(IntPtr pointer, float playbackSpeed);
 
-        [DllImport(Config.Motion_DLL, CallingConvention = Config.Motion_Call, EntryPoint = ImportPrefix + "GetIsEndofFileReached"), SuppressUnmanagedCodeSecurity]
-        private static extern bool GetIsEndofFileReached(IntPtr Pointer);
-        #endregion
+        [DllImport(Config.MotionDll, CallingConvention = Config.MotionCall, EntryPoint = ImportPrefix + "GetIsEndofFileReached"), SuppressUnmanagedCodeSecurity]
+        private static extern bool GetIsEndofFileReached(IntPtr pointer);
     }
 }
