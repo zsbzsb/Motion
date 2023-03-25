@@ -137,7 +137,7 @@ namespace MotionNET
             }
         }
 
-        public bool IsEndofFileReached
+        public bool IsEndOfFileReached
         {
             get
             {
@@ -147,7 +147,7 @@ namespace MotionNET
             }
         }
 
-        public event Action<DataSource> EndofFileReached;
+        public event EventHandler<EventArgs> EndOfFileReached;
 
         public DataSource()
         {
@@ -189,17 +189,18 @@ namespace MotionNET
 
             eofEventRaised = false;
         }
+        
         public void Update()
         {
             EnsureValid();
 
             Update(pointer);
 
-            if (IsEndofFileReached && !eofEventRaised)
+            if (IsEndOfFileReached && !eofEventRaised)
             {
                 eofEventRaised = true;
 
-                EndofFileReached?.Invoke(this);
+                EndOfFileReached.Invoke(this, EventArgs.Empty);
             }
         }
 
